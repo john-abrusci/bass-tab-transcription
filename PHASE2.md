@@ -163,20 +163,82 @@ assuming it.
 
 ## Concurrency
 
-`python bench/measure.py burst --n 10`
+`workersMax` raised 3 → 10. Starting state: 1 ready worker, 1 initializing, 4 throttled.
 
 | Concurrent requests | p50 | p95 | Batch wall | Failures |
 |---|---|---|---|---|
-| 1 | | | | |
-| 5 | | | | |
-| 10 | | | | |
+| 1 (warm) | 13.27s | ~21s | — | 0 |
+| 10 | **66.86s** | **89.89s** | 105.33s | 1 of 10 |
 
-**Does scale-up keep pace, or do requests queue?** Compare p95 against the single-request
-number: if p95 ≈ p50 the endpoint scaled; if p95 ≈ p50 × N it serialised. Runpod reports
-`delayTime` separately from `executionTime`, and `measure.py` records both — queue wait
-shows up in `delayTime`.
+**Scale-up does not keep pace.** Execution across the 9 successful jobs totalled 158s and
+finished in a 105s window — effective parallelism of about **1.5x**, against a configured
+max of 10 workers. Queue delay was 39–73s per request versus 150ms on an idle endpoint, so
+nearly all the degradation is waiting, not slower execution.
 
-**Observation:**
+Runpod did react: 4 requests landed on brand-new workers (`cold: true`, uptime 1–2s), so
+the QUEUE_DELAY autoscaler fired. But new workers need ~15s to come up even with layers
+cached, and 4 of the pool's workers were throttled throughout. Scale-up was real and too
+late to matter.
+
+**For a bursty consumer workload this is the shape that matters:** p50 degrades 5x and p95
+nearly 7x the moment ten users arrive together. That is an argument for a queue with
+honest progress reporting in the UI, not for a bigger GPU.
+
+### The burst isolated torchcrepe's first-call cost
+
+Cold and warm workers served the same job in the same batch, which separates a cost the
+other runs conflated:
+
+| Worker state | Pitch stage |
+|---|---|
+| Warm | 4.29 – 4.74s |
+| Cold | 18.78 – 24.89s |
+
+**14–20s of the pitch stage on a cold worker is not inference.** It is torchcrepe's first
+call — weight load plus, most likely, CUDA context initialisation, which the demucs load in
+`_load()` does not pay because it happens before any CUDA op.
+
+**Actionable: warm both models in `_load()`.** Run a throwaway inference through demucs and
+torchcrepe when the worker boots, so the first real request does not absorb CUDA init. This
+does not reduce total cold start — the cost moves rather than disappears — but it moves it
+out of the request path, makes `model_load_s` honest, and means the first user of a cold
+worker is not the one who pays. Worth measuring rather than assuming: the gain depends on
+whether Runpod bills worker boot time the same as request time.
+
+---
+
+## GPU selection — not measured, derived
+
+**Deliberately skipped**, because the numbers already collected answer the question and the
+measurement would cost more than it teaches. Stating the reasoning rather than leaving an
+empty table:
+
+| Term | Value | GPU-dependent? |
+|---|---|---|
+| Cold start, layers cached | ~15s | no — image pull and container boot |
+| Cold start, fresh host | ~218s | no |
+| Queue delay under load | 39–73s | no — scheduling |
+| Separation | 6.68s | **yes** |
+| Pitch (warm) | 5.18s | **yes** |
+| Payload + queue, idle | 1.45s | no |
+
+Only ~11.9s of a 13.3s warm round trip is GPU-bound, and that is the *best* case. Under
+concurrency the GPU-bound share falls to roughly 18% of a 66.9s p50. A GPU that made
+inference literally instant would take the warm round trip from 13.3s to ~1.4s and the
+loaded p50 from 66.9s to ~55s — while costing 2.2x (L40S) to 4.4x (H100) per hour.
+
+**At what job volume does a faster, pricier GPU become cheaper per job? For this workload,
+never.** Cost per job scales with billed seconds, and billed seconds are dominated by cold
+start and queueing, neither of which a faster GPU improves. The A4000 tier at $0.25/hr is
+the rational choice, and the interesting optimisations are all elsewhere: cold start, the
+upload path, and torchcrepe's first-call cost.
+
+This is reasoning from measurements, not a measurement. It would be falsified if separation
+scaled worse than linearly with track length on cheaper GPUs, or if the cheap tier's LOW
+availability pushed queue delay up enough to swamp the hourly saving — both worth a check
+before treating it as settled.
+
+---
 
 ---
 
