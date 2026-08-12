@@ -66,18 +66,62 @@ random read. Say which dominated here.)_
 
 ## Warm execution
 
-3–4 minute track, worker already up. `python bench/measure.py warm --n 5`
+Track: *Stereosity — Sonata in C#*, 204.4s, transcoded to 64kbps mono AAC (1.64MB).
+RTX 4090 (`ADA_24`), FlashBoot OFF, weights baked in, warm worker. n=5.
 
-| | Median | p95 |
+| | Min | Median | Max |
+|---|---|---|---|
+| Separation | 6.31s | **6.68s** | 14.63s |
+| Pitch tracking | 4.90s | **5.18s** | 7.18s |
+| Worker total | 11.21s | **11.82s** | 20.09s |
+| Round trip incl. payload | 12.44s | **13.27s** | 21.39s |
+| Payload + queue overhead | 1.23s | **1.45s** | 2.12s |
+| Notes returned | 359 | — | 370 |
+
+**A 3:24 track transcribes in 13.3s warm — about 15x realtime end to end.** Separation and
+pitch are closer in cost than expected: 6.7s vs 5.2s, so torchcrepe is not the free stage
+the model-choice table implies. Model load is 0s on a warm worker, confirming the
+`_load()` pattern does what it is supposed to.
+
+**Is payload transfer a meaningful share of latency?** No — 1.45s of 13.27s, about 11%,
+and most of that is queue rather than transfer. But that answer only holds *because* the
+payload was shrunk to 1.64MB. See below.
+
+### Payload transfer is not a latency problem, it is a reliability problem
+
+The spec anticipated measuring payload transfer as a share of latency. The real finding is
+different and worse: **base64 upload over this path fails most of the time.**
+
+| Payload (base64) | Source | First-attempt outcome |
 |---|---|---|
-| Separation | | |
-| Pitch tracking | | |
-| Worker total | | |
-| Round trip incl. payload | | |
-| Payload + queue overhead | | |
+| 0.75 MB | 3.2s synthetic tone | never observed to fail |
+| 2.19 MB | 204s track @ 64kbps mono | **4 of 5 runs needed a retry** |
+| 3.28 MB | 204s track @ 96kbps mono | 3 of 4 failed outright |
+| 11.11 MB | 204s track @ 320kbps stereo | 5 of 5 failed |
 
-**Is payload transfer a meaningful share of latency?** If yes, switch to presigned-URL
-upload — the worker already accepts `audio_url`.
+Failures are `Broken pipe` and, once, `SSL_ALERT_BAD_RECORD_MAC` — a corrupted TLS record,
+which is transport-level, not the API rejecting anything. Failure probability rises with
+size but there is no clean cutoff, so "the request is too big" is the wrong model.
+
+The numbers above are achievable only with retries, which `measure.py` now does (timing
+only the successful attempt, and recording `attempts` so the flakiness stays visible). **A
+median of 13.27s alongside an 80% first-attempt failure rate would be a dishonest headline
+on its own.**
+
+**Conclusion: move to presigned-URL upload.** Not as the latency optimisation the spec
+imagined, but because base64 in the request body is not a reliable transport at song size.
+The worker already accepts `audio_url`; what is missing is somewhere to host the file.
+
+### Two smaller findings
+
+**Output is not deterministic.** Identical input returned between 359 and 370 notes across
+five runs — a 3% spread, most likely from Demucs' overlapped-window splitting plus
+non-deterministic GPU reductions. Worth knowing before treating any single eval number as
+exact, and worth pinning down before tuning segmentation against small F1 differences.
+
+**One separation ran 2.2x slow** (14.63s vs a 6.68s median) with no change in input. The
+endpoint had throttled workers at the time, so this looks like host contention rather than
+anything in the code. It is the reason to report min/median/max rather than a mean.
 
 ---
 

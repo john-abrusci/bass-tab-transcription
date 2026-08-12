@@ -88,26 +88,43 @@ def _await_job(resp: dict, poll_s: float = 2.0, timeout_s: float = 900) -> dict:
     return {"status": "CLIENT_TIMEOUT", "id": job_id}
 
 
+MAX_ATTEMPTS = 4
+
+
 def run_one(b64: str, max_s: int, conf: float) -> dict:
-    """One job, start to finish. Returns wall time plus whatever the worker reported."""
-    t0 = time.perf_counter()
-    try:
-        resp = _req(
-            "runsync",
-            {
-                "input": {
-                    "audio_b64": b64,
-                    "max_duration_s": max_s,
-                    "confidence_threshold": conf,
-                }
-            },
-        )
-        resp = _await_job(resp)
-        wall = time.perf_counter() - t0
-    except urllib.error.HTTPError as exc:
-        return {"ok": False, "error": f"HTTP {exc.code}: {exc.read()[:300]!r}"}
-    except Exception as exc:
-        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    """One job, start to finish. Returns wall time plus whatever the worker reported.
+
+    Large base64 uploads over this path fail intermittently -- broken pipe, and
+    occasionally an SSL bad-record-mac, which is a transport-level corruption
+    rather than the API rejecting anything. Retry on connection-level errors, and
+    time only the attempt that actually succeeded so a retry does not inflate the
+    measurement. `attempts` is recorded so the flakiness stays visible instead of
+    being quietly smoothed away.
+    """
+    payload = {
+        "input": {
+            "audio_b64": b64,
+            "max_duration_s": max_s,
+            "confidence_threshold": conf,
+        }
+    }
+
+    last_error = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        t0 = time.perf_counter()
+        try:
+            resp = _await_job(_req("runsync", payload))
+            wall = time.perf_counter() - t0
+            break
+        except urllib.error.HTTPError as exc:
+            return {"ok": False, "error": f"HTTP {exc.code}: {exc.read()[:300]!r}"}
+        except Exception as exc:
+            last_error = f"{type(exc).__name__}: {exc}"
+            print(f"  attempt {attempt}/{MAX_ATTEMPTS} failed: {last_error}", file=sys.stderr)
+            if attempt < MAX_ATTEMPTS:
+                time.sleep(2.0 * attempt)  # back off; the path needs a moment
+    else:
+        return {"ok": False, "error": last_error, "attempts": MAX_ATTEMPTS}
 
     if resp.get("status") not in ("COMPLETED", None):
         return {"ok": False, "error": f"job {resp.get('status')}", "wall_s": round(wall, 2)}
@@ -119,6 +136,7 @@ def run_one(b64: str, max_s: int, conf: float) -> dict:
     timings = out.get("timings", {})
     return {
         "ok": True,
+        "attempts": attempt,
         # Wall time is what the user feels. Everything else is the split.
         "wall_s": round(wall, 2),
         "worker_total_s": timings.get("total_s"),
