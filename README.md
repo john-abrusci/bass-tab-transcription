@@ -61,6 +61,19 @@ To point at a real endpoint, put `RUNPOD_API_KEY` and `RUNPOD_ENDPOINT_ID` in
 `web/.env.local` (see `.env.example`) and follow
 [`bass-transcribe-worker/README.md`](bass-transcribe-worker/README.md) to build and deploy.
 
+### Transcode before uploading
+
+Base64 upload fails most first attempts at song size (see Results). Until the app does this
+in the browser, shrink the file first — the pipeline downmixes to mono and discards
+everything above 500Hz, so bitrate costs you nothing here:
+
+```bash
+# macOS, no ffmpeg needed. 8.3MB @ 320kbps stereo -> 1.6MB @ 64kbps mono.
+afconvert -f m4af -d aac -b 64000 -c 1 track.mp3 track_64k_mono.m4a
+```
+
+Every measurement in `PHASE2.md` used a file prepared exactly this way.
+
 ## Decisions worth defending
 
 **One endpoint, not two.** Separation and pitch tracking share a process, so the stem
@@ -87,25 +100,92 @@ instrumentation pass.
 the right one depends entirely on where the hand already is — a shortest-path problem over
 `(string, fret)`.
 
+## Results
+
+Deployed and measured on a live Runpod Serverless endpoint (RTX 4090, `ADA_24`, scale to
+zero). Full detail in [`PHASE2.md`](PHASE2.md).
+
+| | |
+|---|---|
+| Image | 4.04 GiB compressed, 13 layers, built on CI for native amd64 |
+| Cold start | **~218s** on a host that has never pulled the image, **~15s** when base layers are cached |
+| Warm round trip | **13.3s** median for a 3:24 track — about 15x realtime |
+| Split | separation 6.7s, pitch 5.2s, payload + queue 1.4s, model load 0s |
+| Under load | 10 concurrent requests take p50 to **66.9s**, p95 to 89.9s |
+| End to end | 365 notes from a real track, rendered as tab, zero DP pitch mismatches |
+
+**Four findings worth more than the numbers:**
+
+**Cold start is not one number.** ~218s versus ~15s on the same endpoint in the same
+scale-to-zero state, depending only on whether the host already holds the base layers. Any
+single quoted figure is misleading.
+
+**Base64 upload is a reliability problem, not a latency one.** The spec expected to measure
+transfer as a share of latency; it is 11%. The real result is that upload fails most first
+attempts — 5/5 at 11MB, 3/4 at 3.3MB, 4/5 needing a retry at 2.2MB, including a corrupted
+TLS record. Presigned URLs are the answer, for a different reason than anticipated.
+
+**Scale-up does not keep pace.** Ten simultaneous requests achieved ~1.5x effective
+parallelism against `workersMax: 10`. Nearly all degradation is queue wait, not slower
+execution.
+
+**GPU choice barely matters here.** Only ~11.9s of a 13.3s warm round trip is GPU-bound,
+falling to ~18% under load, against a cold start of 15–218s. The spec asks at what volume a
+pricier GPU becomes cheaper per job; for this workload, never. Derived from the measurements
+rather than measured directly — the reasoning is in `PHASE2.md`.
+
 ## Status
 
 | Phase | | Notes |
 |---|---|---|
-| 0–1 Worker | code complete, unbuilt | Docker image has never been built — see below |
-| 2 Measurement | tooling ready, no data | `bench/measure.py` + `PHASE2.md` await a live endpoint |
-| 3 Fretboard DP | done, tested | live weight controls in the UI |
-| 4 Tab + eval | done, tested | harness runs on a synthetic fixture |
+| 0–1 Worker | deployed, verified on hardware | `tools/verify_endpoint.py` asserts known pitches round-trip |
+| 2 Measurement | cold, warm, payload, concurrency done | GPU tiers derived not measured; scale-to-zero economics open |
+| 3 Fretboard DP | works on real output | 362/365 notes placed, 0 pitch mismatches; weights untuned against ground truth |
+| 4 Tab + eval | renders real tabs; **eval has no real ground truth** | harness runs only on a synthetic fixture |
 
-**What has actually been verified here:** `npm test` (25 assertions on the DP and
-renderer), `python test_segment.py` (15 assertions across 11 segmentation cases),
-`npm run typecheck`, `npm run build`, and an end-to-end POST through `/api/transcribe`
-returning a rendered tab.
+**Verified:** `npm test` (25 assertions), `python test_segment.py` (15 assertions across 11
+cases), typecheck, production build, the Docker image building on CI, and a full path from
+audio file through the app to a rendered tab using live GPU inference.
 
-**What has not:** the Docker image was never built and no GPU inference has run — there is
-no Docker daemon and no Runpod endpoint in this environment. `transcribe.py`'s calls into
-`demucs` and `torchcrepe` are written against their documented APIs but have not been
-executed. Expect the first real build to need at least one round of dependency fixing.
-Every number in `PHASE2.md` is blank on purpose; none of them are estimates.
+**Accuracy, measured on synthetic audio:**
+
+| | |
+|---|---|
+| Note-level F1 | **0.971** (P 0.974 / R 0.969) |
+| Pitch accuracy | **100.0%** |
+| Octave-error rate | **0.0%** |
+| Position accuracy | not measurable from this fixture |
+
+`tools/make_eval_track.py` synthesises a 32-bar bassline over synthesised drums and chords,
+so every onset and pitch is known by construction. This sidesteps the reason scraped human
+tabs cannot be used directly: they carry no timestamps, so onset-based F1 against them needs
+audio-to-tab alignment first.
+
+**Read that 0.971 as a ceiling, not an accuracy claim.** A synthesised bass has no fret
+noise, no dynamics, no amp character and no room, so separation faces a far easier problem
+than recorded music. What the number does establish is that pitch tracking and segmentation
+are sound — 100% pitch accuracy with zero octave errors on cleanly separable audio. By
+elimination, the rough edges seen on real tracks are more likely to originate in separation
+than in `segment.py`.
+
+**Still unmeasured: accuracy on real recorded music, and position accuracy.** Both need
+human-tabbed songs. A synthesised note has no "correct" fingering, so the fixture omits
+string/fret and the harness reports `n/a` rather than 0% — "not measured" and "measured and
+wrong" must not look the same in a results table.
+
+Known rough edges on real output: notes detected up to C4 (above where a bassline lives,
+likely bleed surviving separation), a few below the low E, and 38% of track duration with no
+detected notes. `segment.py` gates to midi 24–72, which is too generous. Tightening it is a
+one-line change deliberately **not** made yet: the synthetic fixture spans midi 40–59, so it
+cannot tell you whether a tighter gate removes errors or real notes. That needs real ground
+truth.
+
+Known rough edges visible in real output: notes detected up to C4 (above where a bassline
+lives, likely bleed surviving separation), a few below the low E, and 38% of track duration
+with no detected notes — some genuine silence, some probably missed. `segment.py` gates to
+midi 24–72, which is too generous. Tightening it is a one-line change deliberately **not**
+made yet, because without eval there is no way to tell whether it removes errors or real
+notes.
 
 ## A note on the eval fixture
 

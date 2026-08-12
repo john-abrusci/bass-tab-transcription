@@ -35,8 +35,13 @@ interface GroundTruthNote {
   onset: number;
   duration?: number;
   midi: number;
-  string: number;
-  fret: number;
+  /**
+   * Optional. Synthetic fixtures omit these on purpose: a generated note has no
+   * "correct" fingering to compare against, so position accuracy is only
+   * meaningful against a tab a human actually played.
+   */
+  string?: number;
+  fret?: number;
 }
 
 interface GroundTruth {
@@ -54,7 +59,7 @@ interface Metrics {
   f1: number;
   pitchAccuracy: number;
   octaveErrorRate: number;
-  positionAccuracy: number;
+  positionAccuracy: number | null;
   positionMatched: number;
 }
 
@@ -107,12 +112,21 @@ function evaluate(
     ([i, j]) => Math.abs(pred[j].midi - gt.notes[i].midi) === 12
   ).length;
 
+  // Position accuracy needs a human's fingering to compare against. Ground truth
+  // without string/fret (any synthetic fixture) reports null rather than 0% --
+  // "we did not measure this" and "we measured it and got nothing right" are very
+  // different claims and must not look identical in the table.
+  const hasPositions = gt.notes.some((n) => n.string !== undefined && n.fret !== undefined);
   const positioned = assignFretboard(pred, { weights });
   const byOnset = new Map(positioned.map((n) => [n.onset, n]));
   let posMatch = 0;
+  let posComparable = 0;
   for (const [i, j] of strict) {
+    const truth = gt.notes[i];
+    if (truth.string === undefined || truth.fret === undefined) continue;
+    posComparable++;
     const p = byOnset.get(pred[j].onset)?.position;
-    if (p && p.string === gt.notes[i].string && p.fret === gt.notes[i].fret) posMatch++;
+    if (p && p.string === truth.string && p.fret === truth.fret) posMatch++;
   }
 
   return {
@@ -124,8 +138,8 @@ function evaluate(
     f1,
     pitchAccuracy: loose.length ? correctPitch / loose.length : 0,
     octaveErrorRate: loose.length ? octaveErrors / loose.length : 0,
-    positionAccuracy: strict.length ? posMatch / strict.length : 0,
-    positionMatched: strict.length,
+    positionAccuracy: hasPositions && posComparable ? posMatch / posComparable : null,
+    positionMatched: posComparable,
   };
 }
 
@@ -170,7 +184,7 @@ function main() {
   for (const r of results) {
     console.log(
       `| ${r.song} | ${r.nGt} | ${r.nPred} | ${f3(r.precision)} | ${f3(r.recall)} | ` +
-        `${f3(r.f1)} | ${pct(r.pitchAccuracy)} | ${pct(r.octaveErrorRate)} | ${pct(r.positionAccuracy)} |`
+        `${f3(r.f1)} | ${pct(r.pitchAccuracy)} | ${pct(r.octaveErrorRate)} | ${r.positionAccuracy === null ? "n/a" : pct(r.positionAccuracy)} |`
     );
   }
 
@@ -179,7 +193,7 @@ function main() {
   console.log(
     `| **mean** | | | ${f3(mean((r) => r.precision))} | ${f3(mean((r) => r.recall))} | ` +
       `${f3(mean((r) => r.f1))} | ${pct(mean((r) => r.pitchAccuracy))} | ` +
-      `${pct(mean((r) => r.octaveErrorRate))} | ${pct(mean((r) => r.positionAccuracy))} |`
+      `${pct(mean((r) => r.octaveErrorRate))} | ${(() => { const v = results.filter((r) => r.positionAccuracy !== null); return v.length ? pct(v.reduce((a, r) => a + (r.positionAccuracy as number), 0) / v.length) : "n/a"; })()} |`
   );
 
   if (process.argv.includes("--sweep")) {
@@ -192,7 +206,7 @@ function main() {
         for (const openBonus of [0, -2, -4]) {
           const w = { fretHeight, stringChange, openBonus };
           const acc =
-            pairs.reduce((a, { gt, pred }) => a + evaluate(gt, pred, w).positionAccuracy, 0) /
+            pairs.reduce((a, { gt, pred }) => a + (evaluate(gt, pred, w).positionAccuracy ?? 0), 0) /
             pairs.length;
           const label = `| ${fretHeight} | ${stringChange} | ${openBonus} | ${pct(acc)} |`;
           console.log(label);
