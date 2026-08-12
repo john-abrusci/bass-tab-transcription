@@ -1,0 +1,8 @@
+{
+  "input": {
+    "audio_b64": "<base64 of a short wav -- see tools/encode.py>",
+    "max_duration_s": 30,
+    "confidence_threshold": 0.5,
+    "return_stem": false
+  }
+}

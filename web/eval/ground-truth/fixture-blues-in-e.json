@@ -1,0 +1,342 @@
+{
+  "song": "fixture-blues-in-e (SYNTHETIC)",
+  "tempo_bpm": 96,
+  "notes": [
+    {
+      "onset": 0,
+      "duration": 0.5313,
+      "midi": 40,
+      "string": 2,
+      "fret": 2
+    },
+    {
+      "onset": 0.625,
+      "duration": 0.5313,
+      "midi": 44,
+      "string": 3,
+      "fret": 1
+    },
+    {
+      "onset": 1.25,
+      "duration": 0.5313,
+      "midi": 47,
+      "string": 3,
+      "fret": 4
+    },
+    {
+      "onset": 1.875,
+      "duration": 0.5313,
+      "midi": 49,
+      "string": 3,
+      "fret": 6
+    },
+    {
+      "onset": 2.5,
+      "duration": 0.5313,
+      "midi": 40,
+      "string": 2,
+      "fret": 2
+    },
+    {
+      "onset": 3.125,
+      "duration": 0.5313,
+      "midi": 44,
+      "string": 3,
+      "fret": 1
+    },
+    {
+      "onset": 3.75,
+      "duration": 0.5313,
+      "midi": 47,
+      "string": 3,
+      "fret": 4
+    },
+    {
+      "onset": 4.375,
+      "duration": 0.5313,
+      "midi": 49,
+      "string": 3,
+      "fret": 6
+    },
+    {
+      "onset": 5,
+      "duration": 0.5313,
+      "midi": 40,
+      "string": 2,
+      "fret": 2
+    },
+    {
+      "onset": 5.625,
+      "duration": 0.5313,
+      "midi": 44,
+      "string": 3,
+      "fret": 1
+    },
+    {
+      "onset": 6.25,
+      "duration": 0.5313,
+      "midi": 47,
+      "string": 3,
+      "fret": 4
+    },
+    {
+      "onset": 6.875,
+      "duration": 0.5313,
+      "midi": 49,
+      "string": 3,
+      "fret": 6
+    },
+    {
+      "onset": 7.5,
+      "duration": 0.5313,
+      "midi": 40,
+      "string": 2,
+      "fret": 2
+    },
+    {
+      "onset": 8.125,
+      "duration": 0.5313,
+      "midi": 44,
+      "string": 3,
+      "fret": 1
+    },
+    {
+      "onset": 8.75,
+      "duration": 0.5313,
+      "midi": 47,
+      "string": 3,
+      "fret": 4
+    },
+    {
+      "onset": 9.375,
+      "duration": 0.5313,
+      "midi": 49,
+      "string": 3,
+      "fret": 6
+    },
+    {
+      "onset": 10,
+      "duration": 0.5313,
+      "midi": 45,
+      "string": 3,
+      "fret": 2
+    },
+    {
+      "onset": 10.625,
+      "duration": 0.5313,
+      "midi": 49,
+      "string": 3,
+      "fret": 6
+    },
+    {
+      "onset": 11.25,
+      "duration": 0.5313,
+      "midi": 52,
+      "string": 3,
+      "fret": 9
+    },
+    {
+      "onset": 11.875,
+      "duration": 0.5313,
+      "midi": 54,
+      "string": 3,
+      "fret": 11
+    },
+    {
+      "onset": 12.5,
+      "duration": 0.5313,
+      "midi": 45,
+      "string": 3,
+      "fret": 2
+    },
+    {
+      "onset": 13.125,
+      "duration": 0.5313,
+      "midi": 49,
+      "string": 3,
+      "fret": 6
+    },
+    {
+      "onset": 13.75,
+      "duration": 0.5313,
+      "midi": 52,
+      "string": 3,
+      "fret": 9
+    },
+    {
+      "onset": 14.375,
+      "duration": 0.5313,
+      "midi": 54,
+      "string": 3,
+      "fret": 11
+    },
+    {
+      "onset": 15,
+      "duration": 0.5313,
+      "midi": 40,
+      "string": 2,
+      "fret": 2
+    },
+    {
+      "onset": 15.625,
+      "duration": 0.5313,
+      "midi": 44,
+      "string": 3,
+      "fret": 1
+    },
+    {
+      "onset": 16.25,
+      "duration": 0.5313,
+      "midi": 47,
+      "string": 3,
+      "fret": 4
+    },
+    {
+      "onset": 16.875,
+      "duration": 0.5313,
+      "midi": 49,
+      "string": 3,
+      "fret": 6
+    },
+    {
+      "onset": 17.5,
+      "duration": 0.5313,
+      "midi": 40,
+      "string": 2,
+      "fret": 2
+    },
+    {
+      "onset": 18.125,
+      "duration": 0.5313,
+      "midi": 44,
+      "string": 3,
+      "fret": 1
+    },
+    {
+      "onset": 18.75,
+      "duration": 0.5313,
+      "midi": 47,
+      "string": 3,
+      "fret": 4
+    },
+    {
+      "onset": 19.375,
+      "duration": 0.5313,
+      "midi": 49,
+      "string": 3,
+      "fret": 6
+    },
+    {
+      "onset": 20,
+      "duration": 0.5313,
+      "midi": 47,
+      "string": 3,
+      "fret": 4
+    },
+    {
+      "onset": 20.625,
+      "duration": 0.5313,
+      "midi": 51,
+      "string": 3,
+      "fret": 8
+    },
+    {
+      "onset": 21.25,
+      "duration": 0.5313,
+      "midi": 54,
+      "string": 3,
+      "fret": 11
+    },
+    {
+      "onset": 21.875,
+      "duration": 0.5313,
+      "midi": 56,
+      "string": 3,
+      "fret": 13
+    },
+    {
+      "onset": 22.5,
+      "duration": 0.5313,
+      "midi": 45,
+      "string": 3,
+      "fret": 2
+    },
+    {
+      "onset": 23.125,
+      "duration": 0.5313,
+      "midi": 49,
+      "string": 3,
+      "fret": 6
+    },
+    {
+      "onset": 23.75,
+      "duration": 0.5313,
+      "midi": 52,
+      "string": 3,
+      "fret": 9
+    },
+    {
+      "onset": 24.375,
+      "duration": 0.5313,
+      "midi": 54,
+      "string": 3,
+      "fret": 11
+    },
+    {
+      "onset": 25,
+      "duration": 0.5313,
+      "midi": 40,
+      "string": 2,
+      "fret": 2
+    },
+    {
+      "onset": 25.625,
+      "duration": 0.5313,
+      "midi": 44,
+      "string": 3,
+      "fret": 1
+    },
+    {
+      "onset": 26.25,
+      "duration": 0.5313,
+      "midi": 47,
+      "string": 3,
+      "fret": 4
+    },
+    {
+      "onset": 26.875,
+      "duration": 0.5313,
+      "midi": 49,
+      "string": 3,
+      "fret": 6
+    },
+    {
+      "onset": 27.5,
+      "duration": 0.5313,
+      "midi": 47,
+      "string": 3,
+      "fret": 4
+    },
+    {
+      "onset": 28.125,
+      "duration": 0.5313,
+      "midi": 51,
+      "string": 3,
+      "fret": 8
+    },
+    {
+      "onset": 28.75,
+      "duration": 0.5313,
+      "midi": 54,
+      "string": 3,
+      "fret": 11
+    },
+    {
+      "onset": 29.375,
+      "duration": 0.5313,
+      "midi": 56,
+      "string": 3,
+      "fret": 13
+    }
+  ]
+}

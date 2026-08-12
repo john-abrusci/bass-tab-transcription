@@ -1,0 +1,12 @@
+# torch/torchaudio are already in the base image (2.4.0 + cu121). Pinning them
+# here stops a transitive dep from quietly pulling a different build and
+# swapping the CUDA wheel out from under us mid-build.
+torch==2.4.0
+torchaudio==2.4.0
+
+runpod>=1.7
+demucs==4.0.1
+torchcrepe==0.0.23
+soundfile>=0.12
+numpy<2
+scipy>=1.11
