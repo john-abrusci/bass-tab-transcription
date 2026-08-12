@@ -62,8 +62,34 @@ def encode(audio: Path) -> str:
     return base64.b64encode(audio.read_bytes()).decode()
 
 
+TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"}
+
+
+def _await_job(resp: dict, poll_s: float = 2.0, timeout_s: float = 900) -> dict:
+    """Poll /status until the job reaches a terminal state.
+
+    /runsync does not block indefinitely -- it waits a bounded window and then
+    returns {"status": "IN_QUEUE", "id": ...}. A cold start on this endpoint runs
+    to ~220s, well past that window, so treating the first response as final
+    would record a cold start as an error every single time.
+    """
+    status = resp.get("status")
+    if status in TERMINAL or status is None:
+        return resp
+    job_id = resp.get("id")
+    if not job_id:
+        return resp
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        time.sleep(poll_s)
+        resp = _req(f"status/{job_id}")
+        if resp.get("status") in TERMINAL:
+            return resp
+    return {"status": "CLIENT_TIMEOUT", "id": job_id}
+
+
 def run_one(b64: str, max_s: int, conf: float) -> dict:
-    """One /runsync call. Returns wall time plus whatever the worker reported."""
+    """One job, start to finish. Returns wall time plus whatever the worker reported."""
     t0 = time.perf_counter()
     try:
         resp = _req(
@@ -76,11 +102,15 @@ def run_one(b64: str, max_s: int, conf: float) -> dict:
                 }
             },
         )
+        resp = _await_job(resp)
         wall = time.perf_counter() - t0
     except urllib.error.HTTPError as exc:
         return {"ok": False, "error": f"HTTP {exc.code}: {exc.read()[:300]!r}"}
     except Exception as exc:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+
+    if resp.get("status") not in ("COMPLETED", None):
+        return {"ok": False, "error": f"job {resp.get('status')}", "wall_s": round(wall, 2)}
 
     out = resp.get("output") or {}
     if "error" in out:

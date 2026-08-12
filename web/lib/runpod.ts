@@ -12,6 +12,38 @@ export function runpodConfigured(): boolean {
   return !!(process.env.RUNPOD_API_KEY && process.env.RUNPOD_ENDPOINT_ID);
 }
 
+const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
+const POLL_INTERVAL_MS = 2000;
+
+/**
+ * Poll /status until the job is done.
+ *
+ * /runsync waits a bounded window and then returns `{status: "IN_QUEUE", id}`
+ * rather than blocking to completion. A cold start on this endpoint measured
+ * ~220s, far past that window, so without this every cold request surfaces to
+ * the user as a failure.
+ */
+async function awaitJob(
+  first: any,
+  endpoint: string,
+  key: string,
+  signal: AbortSignal
+): Promise<any> {
+  let job = first;
+  while (job?.status && !TERMINAL.has(job.status)) {
+    if (!job.id) return job;
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    if (signal.aborted) throw new Error("timed out waiting for Runpod job");
+    const res = await fetch(`https://api.runpod.ai/v2/${endpoint}/status/${job.id}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal,
+    });
+    if (!res.ok) throw new Error(`status poll returned ${res.status}`);
+    job = await res.json();
+  }
+  return job;
+}
+
 /**
  * Call the serverless endpoint synchronously.
  *
@@ -53,7 +85,7 @@ export async function transcribe(
       throw new Error(`Runpod returned ${res.status}: ${(await res.text()).slice(0, 300)}`);
     }
 
-    const json = await res.json();
+    const json = await awaitJob(await res.json(), endpoint, key, controller.signal);
     if (json.status && json.status !== "COMPLETED") {
       throw new Error(`job ${json.status}: ${JSON.stringify(json.error ?? json).slice(0, 300)}`);
     }

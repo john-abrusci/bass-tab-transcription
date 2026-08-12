@@ -23,11 +23,22 @@ CREPE_SR = 16_000
 CREPE_HOP = 160  # samples @ 16kHz = 10ms frames
 CREPE_MODEL = "full"
 
-# Low E on a 4-string is ~41Hz; a 5-string low B is ~31Hz. Give the tracker a
-# little headroom below and cap it well under where a bass fundamental can go,
-# so it cannot lock onto a harmonic and report the octave above.
-BASS_FMIN = 28.0
+# torchcrepe inherits CREPE's frequency range, which bottoms out at C1 = 32.70Hz.
+# Passing fmin below that does NOT raise: it silently returns -inf periodicity for
+# every frame, every frame is then gated, and the endpoint returns zero notes that
+# look exactly like "the model heard nothing". Verified on real hardware -- fmin
+# 28.0 gave 0 notes, fmin 32.70 gave the correct four. Hence the floor, and the
+# assert so this can never regress quietly again.
+CREPE_FMIN_FLOOR = 32.70
+
+# Low E on a 4-string is ~41Hz, comfortably above the floor. A 5-string's low B is
+# ~30.87Hz, which is BELOW it -- torchcrepe cannot track that fundamental at all,
+# so the bottom two frets of a 5-string will be missed or reported an octave up.
+# That is a real limitation of this tracker, not a tuning problem.
+BASS_FMIN = CREPE_FMIN_FLOOR
 BASS_FMAX = 500.0
+
+assert BASS_FMIN >= CREPE_FMIN_FLOOR, "fmin below CREPE's range yields -inf periodicity"
 
 
 def separate_bass(
@@ -97,7 +108,7 @@ def pitch_to_notes(
         tensor,
         CREPE_SR,
         hop_length=CREPE_HOP,
-        fmin=BASS_FMIN,
+        fmin=max(BASS_FMIN, CREPE_FMIN_FLOOR),  # clamp: below the floor is silent garbage
         fmax=BASS_FMAX,
         model=CREPE_MODEL,
         batch_size=512,
