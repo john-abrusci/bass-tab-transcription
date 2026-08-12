@@ -25,3 +25,6 @@ bass-transcribe-worker/bench/results.jsonl
 *.m4a
 
 .DS_Store
+
+# Local eval environment (torch + demucs, multi-GB)
+.venv-local/

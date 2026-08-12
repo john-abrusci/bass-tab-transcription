@@ -147,26 +147,36 @@ rather than measured directly — the reasoning is in `PHASE2.md`.
 cases), typecheck, production build, the Docker image building on CI, and a full path from
 audio file through the app to a rendered tab using live GPU inference.
 
-**Accuracy, measured on synthetic audio:**
+**Accuracy, measured:**
 
-| | |
-|---|---|
-| Note-level F1 | **0.971** (P 0.974 / R 0.969) |
-| Pitch accuracy | **100.0%** |
-| Octave-error rate | **0.0%** |
-| Position accuracy | not measurable from this fixture |
+| Fixture | Note F1 | Pitch acc | Octave err | Predicted MIDI range |
+|---|---|---|---|---|
+| Synthetic bass over **synthesised** backing | 0.971 | 100% | 0% | 29–59 |
+| Synthetic bass over **real** backing (bass removed) | **0.995** | 100% | 0% | 40–59 |
 
-`tools/make_eval_track.py` synthesises a 32-bar bassline over synthesised drums and chords,
-so every onset and pitch is known by construction. This sidesteps the reason scraped human
-tabs cannot be used directly: they carry no timestamps, so onset-based F1 against them needs
-audio-to-tab alignment first.
+Ground truth for both comes from `tools/make_eval_track.py`, which synthesises a 32-bar
+bassline so every onset and pitch is exact by construction. This sidesteps the reason
+scraped human tabs cannot be used directly: they carry no timestamps, so onset-based F1
+against them would need audio-to-tab alignment first.
 
-**Read that 0.971 as a ceiling, not an accuracy claim.** A synthesised bass has no fret
-noise, no dynamics, no amp character and no room, so separation faces a far easier problem
-than recorded music. What the number does establish is that pitch tracking and segmentation
-are sound — 100% pitch accuracy with zero octave errors on cleanly separable audio. By
-elimination, the rough edges seen on real tracks are more likely to originate in separation
-than in `segment.py`.
+The realistic fixture needs backing that has no bass of its own, or Demucs would separate
+two basslines and the ground truth would be meaningless. `tools/strip_bass.py` produces it
+from any recording by separating the track and keeping drums + other + vocals.
+
+**Real backing scored higher than synthesised backing, which was not the expectation.**
+Demucs is trained on real music, so real drums, guitars and vocals are its training
+distribution and it separates them cleanly. The synthesised chords were both
+out-of-distribution and spectrally careless — pitched at 330–500Hz, colliding with the
+`BASS_FMAX = 500` search range. The evidence is in the MIDI ranges above: against synthesised
+backing the pipeline invented notes down at MIDI 29, well below the true 40–59; against real
+backing it produced exactly 40–59.
+
+**What is still unmeasured is the bass itself.** Both fixtures use a *synthesised* bass —
+a clean harmonic stack with no fret noise, no dynamics, no amp character and no room. That
+is now the dominant unrealism, and it is precisely what pitch tracking sees. These numbers
+establish that separation and segmentation handle real *accompaniment* well; they say
+nothing about how the pipeline handles a real recorded bass tone. Closing that gap needs
+either a DI recording of a known part or a sampled bass instrument driven by known MIDI.
 
 **Still unmeasured: accuracy on real recorded music, and position accuracy.** Both need
 human-tabbed songs. A synthesised note has no "correct" fingering, so the fixture omits

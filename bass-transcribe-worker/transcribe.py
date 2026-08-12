@@ -46,16 +46,26 @@ def separate_bass(
     path: str,
     device: torch.device,
     max_s: Optional[float] = 300,
+    wav: Optional[torch.Tensor] = None,
 ) -> Tuple[np.ndarray, int]:
-    """Run htdemucs and return (mono bass stem as float32, sample_rate)."""
-    from demucs.apply import apply_model
-    from demucs.audio import AudioFile
+    """Run htdemucs and return (mono bass stem as float32, sample_rate).
 
-    wav = AudioFile(path).read(
-        streams=0,
-        samplerate=model.samplerate,
-        channels=model.audio_channels,
-    )
+    `wav` lets a caller supply already-decoded audio as (channels, samples) and
+    skip the ffmpeg-backed reader. The worker never uses it -- the container has
+    ffmpeg -- but it lets the local eval tools run this exact function without a
+    system dependency, so evaluation measures the deployed code rather than a
+    reimplementation of it.
+    """
+    from demucs.apply import apply_model
+
+    if wav is None:
+        from demucs.audio import AudioFile
+
+        wav = AudioFile(path).read(
+            streams=0,
+            samplerate=model.samplerate,
+            channels=model.audio_channels,
+        )
     if max_s:
         wav = wav[:, : int(max_s * model.samplerate)]
 

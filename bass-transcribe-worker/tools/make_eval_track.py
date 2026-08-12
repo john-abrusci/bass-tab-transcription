@@ -155,6 +155,27 @@ def build_chords(bpm: float, bars: int, n: int) -> np.ndarray:
     return out
 
 
+def load_backing(path: str, max_n: int) -> tuple[np.ndarray, int]:
+    """Load real backing, downmixed to mono at SR.
+
+    The caller is responsible for the audio already being bass-free. Mixing a
+    synthetic bass under a track that still has its own bass would give Demucs
+    two basses to separate and make the ground truth meaningless.
+    """
+    import soundfile as sf
+
+    data, sr = sf.read(path, dtype="float32", always_2d=True)
+    mono = data.mean(axis=1)
+    if sr != SR:
+        from scipy.signal import resample_poly
+        from math import gcd
+
+        g = gcd(int(sr), SR)
+        mono = resample_poly(mono, SR // g, sr // g).astype(np.float32)
+    n = min(len(mono), max_n)
+    return mono[:n], n
+
+
 def write_wav(path: Path, audio: np.ndarray) -> None:
     pcm = (np.clip(audio, -1, 1) * 32767).astype("<i2")
     stereo = np.repeat(pcm[:, None], 2, axis=1)
@@ -172,6 +193,9 @@ def main() -> None:
     p.add_argument("--bpm", type=float, default=100.0)
     p.add_argument("--bars", type=int, default=32)
     p.add_argument("--no-backing", action="store_true", help="bass alone, no drums or chords")
+    p.add_argument("--backing-audio", default=None,
+                   help="mix under real recorded audio instead of synthesised backing. "
+                        "Must already be bass-free -- see tools/strip_bass.py.")
     p.add_argument("--bass-gain", type=float, default=1.0)
     p.add_argument("--backing-gain", type=float, default=0.85)
     a = p.parse_args()
@@ -180,7 +204,20 @@ def main() -> None:
     bass = bass / max(np.abs(bass).max(), 1e-9)
     mix = bass * a.bass_gain
 
-    if not a.no_backing:
+    if a.backing_audio:
+        backing, n = load_backing(a.backing_audio, len(bass))
+        if n < len(bass):
+            # Trim the bass and drop truth notes past the end, so ground truth
+            # never claims a note in audio that does not exist.
+            bass, mix = bass[:n], mix[:n]
+            cutoff = n / SR
+            before = len(truth)
+            truth = [t for t in truth if t["onset"] + t["duration"] <= cutoff]
+            print(f"backing shorter than bassline: trimmed to {cutoff:.1f}s, "
+                  f"{before - len(truth)} notes dropped from truth")
+        backing = backing / max(np.abs(backing).max(), 1e-9)
+        mix = mix + backing * a.backing_gain
+    elif not a.no_backing:
         n = len(bass)
         backing = build_drums(a.bpm, a.bars, n) + build_chords(a.bpm, a.bars, n)
         backing = backing / max(np.abs(backing).max(), 1e-9)
@@ -197,6 +234,8 @@ def main() -> None:
                 + ("-bass-only" if a.no_backing else ""),
                 "tempo_bpm": a.bpm,
                 "synthetic": True,
+                "backing": "real recorded audio (bass removed)" if a.backing_audio
+                           else ("none" if a.no_backing else "synthesised drums + chords"),
                 "note": "Positions omitted deliberately: a synthesised note has no correct "
                         "fingering, so position accuracy is not measurable from this fixture.",
                 "notes": truth,
@@ -208,7 +247,9 @@ def main() -> None:
     pitches = [t["midi"] for t in truth]
     print(f"{out_audio}: {len(mix)/SR:.1f}s, {out_audio.stat().st_size/1e6:.2f}MB")
     print(f"{a.out_truth}: {len(truth)} notes, midi {min(pitches)}-{max(pitches)}")
-    print(f"  {a.bars} bars @ {a.bpm}bpm, backing: {'no' if a.no_backing else 'drums + chords'}")
+    backing_desc = ("real audio (bass removed)" if a.backing_audio
+                    else ("none" if a.no_backing else "synthesised drums + chords"))
+    print(f"  {a.bars} bars @ {a.bpm}bpm, backing: {backing_desc}")
 
 
 if __name__ == "__main__":
