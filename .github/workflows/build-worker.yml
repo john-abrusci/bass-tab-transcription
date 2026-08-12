@@ -90,14 +90,24 @@ jobs:
           fi
 
           COMPRESSED=$(echo "$RAW" | jq '[.layers[].size] | add')
+          LAYERS=$(echo "$RAW" | jq '.layers | length')
+          HUMAN=$(numfmt --to=iec "$COMPRESSED")
+
+          # Also to stdout: the job summary is not retrievable through `gh run view`,
+          # so without this the number is only readable in a browser.
+          echo "IMAGE_SIZE_COMPRESSED_BYTES=$COMPRESSED"
+          echo "IMAGE_SIZE_COMPRESSED=$HUMAN"
+          echo "IMAGE_LAYERS=$LAYERS"
+          echo "IMAGE_DIGEST=${{ steps.build.outputs.digest }}"
+
           {
             echo "### Worker image"
             echo ""
             echo "| | |"
             echo "|---|---|"
             echo "| Digest | \`${{ steps.build.outputs.digest }}\` |"
-            echo "| Compressed layers | $(numfmt --to=iec "$COMPRESSED") |"
-            echo "| Layers | $(echo "$RAW" | jq '.layers | length') |"
+            echo "| Compressed layers | $HUMAN |"
+            echo "| Layers | $LAYERS |"
             echo ""
             echo "Compressed size is what Runpod downloads; on-disk is larger."
             echo "Pull this from a Runpod endpoint as:"
