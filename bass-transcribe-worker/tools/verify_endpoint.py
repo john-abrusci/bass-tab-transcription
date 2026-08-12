@@ -40,6 +40,39 @@ def load_env(path: Path) -> None:
         os.environ.setdefault(k.strip(), v.strip())
 
 
+TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"}
+
+
+def await_job(payload: dict, key: str, endpoint: str, poll_s: float = 3.0,
+              timeout_s: float = 900) -> dict:
+    """/runsync returns IN_QUEUE once its bounded wait expires; poll to the end.
+
+    A cold start on this endpoint runs ~220s, far past that window, so without
+    polling every cold verification would report a spurious failure.
+    """
+    status = payload.get("status")
+    if status in TERMINAL or status is None or not payload.get("id"):
+        return payload
+
+    job_id = payload["id"]
+    deadline = time.time() + timeout_s
+    waited = 0.0
+    while time.time() < deadline:
+        time.sleep(poll_s)
+        waited += poll_s
+        req = urllib.request.Request(
+            f"https://api.runpod.ai/v2/{endpoint}/status/{job_id}",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            payload = json.loads(resp.read())
+        state = payload.get("status")
+        print(f"  [{waited:5.0f}s] {state}", flush=True)
+        if state in TERMINAL:
+            return payload
+    return {"status": "CLIENT_TIMEOUT", "id": job_id}
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--audio", default="test_tone.wav")
@@ -79,6 +112,7 @@ def main() -> int:
     try:
         with urllib.request.urlopen(req, timeout=900) as resp:
             payload = json.loads(resp.read())
+        payload = await_job(payload, key, endpoint)
     except urllib.error.HTTPError as exc:
         print(f"HTTP {exc.code}: {exc.read()[:500].decode(errors='replace')}", file=sys.stderr)
         return 2
