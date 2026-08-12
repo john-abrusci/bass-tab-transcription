@@ -164,14 +164,30 @@ def record(kind: str, label: str, payload: dict) -> None:
 def cmd_cold(args) -> None:
     h = _req("health").get("workers", {})
     ready = (h.get("idle", 0) or 0) + (h.get("running", 0) or 0)
+    initializing = h.get("initializing", 0) or 0
+
     if ready:
         print(
             f"WARNING: {ready} worker(s) already up -- this will not be a cold start.\n"
             "Wait out the idle timeout (or set max workers to 0 and back) first.",
             file=sys.stderr,
         )
+    if initializing:
+        # Runpod pre-warms a worker when an endpoint is created, so a request
+        # fired now waits only for the *remainder* of an init that started
+        # before it. That understates cold start, and it is invisible if you
+        # only check idle/running -- so record the whole worker state with the
+        # measurement rather than asserting a clean one.
+        print(
+            f"NOTE: {initializing} worker(s) already initializing; the measured "
+            "delay excludes however long that had been running.",
+            file=sys.stderr,
+        )
+
     b64 = encode(Path(args.audio))
-    record("cold", args.label, run_one(b64, args.max_s, args.conf))
+    result = run_one(b64, args.max_s, args.conf)
+    result["workers_at_request"] = h
+    record("cold", args.label, result)
 
 
 def cmd_warm(args) -> None:

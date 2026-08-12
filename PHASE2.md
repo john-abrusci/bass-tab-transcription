@@ -17,24 +17,49 @@ numbers transfer to a 4-minute track.** They are here for the cold-start finding
 Endpoint `v22yhtuixccxc0`, RTX 4090 (`ADA_24`), FlashBoot OFF, weights baked in,
 `workersMin` 0, `idleTimeout` 5s.
 
-| Run | Image state on host | delayTime | exec | model load | separation | pitch |
-|---|---|---|---|---|---|---|
-| 1 | never pulled anywhere | **217.7s** | 21.8s | 1.52s | 3.15s | 16.93s |
-| 2 | same image, new worker | — | — | 0.66s | 1.47s | 14.9s |
-| 3 | new tag, 12/13 layers cached | **15.2s** | 19.9s | 2.07s | 1.60s | 15.76s |
+| Run | Condition | delayTime | exec | model load | separation | pitch | logged? |
+|---|---|---|---|---|---|---|---|
+| A | new endpoint, image never pulled anywhere | **217.7s** | 21.8s | 1.52s | 3.15s | 16.93s | by hand |
+| B | new endpoint, image already exists in GHCR | **171.7s** | 21.1s | 1.56s | 2.09s | 17.02s | ✅ jsonl |
+| C | same endpoint as B, drained to zero, refired | **144.3s** | 21.5s | 1.90s | 2.01s | 17.24s | ✅ jsonl |
+| D | same endpoint, new tag, workers recently active | **15.2s** | 19.9s | 2.07s | 1.60s | 15.76s | by hand |
 
-**Cold start is not one number.** A host that has never seen the image pays ~218s to pull
-4.1 GiB. A host that already has the base layers pays ~15s, because a code-only rebuild
-changes just the final `COPY` layer. Same endpoint, same scale-to-zero state, 14x apart.
+**Scale-from-zero cold start is ~145–220s. Consistently.** Three independent measurements
+(A, B, C) all landed in that band, on a 4.04 GiB image.
 
-Two consequences worth carrying into the real measurements:
+**An earlier version of this document drew the wrong conclusion from run D.** It claimed
+cold start was "not one number" — ~218s on a fresh host versus ~15s once layers were
+cached — and treated 15s as the common case. Runs B and C, taken specifically to log the
+number properly, refute that. D was not a scale-from-zero cold start at all: it was a
+redeploy that landed on a host still holding the previous image, i.e. an in-place image
+swap. Every genuine start-from-nothing measurement is in the 145–220s band.
 
-- Quoting a single cold-start figure is misleading. Report both, and say which one a user
-  actually experiences — that depends on how often Runpod schedules you onto a fresh host,
-  which is itself worth measuring.
-- It weakens the case for the network-volume experiment. If layer caching already gets the
-  common case to 15s, moving weights off the image mostly helps the rare first pull. Worth
-  measuring anyway, but predict the result before running it.
+The revised model: **what matters is whether the host assigned to your worker already holds
+your image, and on a scale-to-zero endpoint it usually does not.** Global image popularity
+does not help — run B paid 171.7s for an image Runpod hosts had already pulled several
+times that day.
+
+Consequences:
+
+- A scale-to-zero endpoint serving a 4 GiB image makes its first user wait **2.5–3.5
+  minutes**. That is a product constraint, not a tuning detail, and it dominates every
+  other latency term by an order of magnitude.
+- This *strengthens* the case for the network-volume experiment, which the earlier
+  conclusion had dismissed. If the pull is 145–220s every time a worker starts cold, moving
+  weights off the image is attacking the dominant cost rather than a rare one.
+- Image size is the lever worth pulling. 4.04 GiB is mostly the CUDA base image, so a
+  slimmer base plausibly beats every other optimisation available here.
+
+**Where the cold-start time actually goes** (run C, 3.2s clip, 168.1s wall):
+
+| | | share |
+|---|---|---|
+| Worker startup (pull + boot) | 144.3s | 86% |
+| torchcrepe first-call init | ~17.2s | 10% |
+| Demucs model load | 1.9s | 1% |
+| **Actual inference** | **~2.0s** | **1%** |
+
+Roughly 1% of a cold request is the work the user asked for.
 
 **`pitch_s` is ~15s on a 3.2s clip and barely moves with audio length** — that is
 torchcrepe loading its weights on first call, not inference. Every run above hit a cold

@@ -108,7 +108,7 @@ zero). Full detail in [`PHASE2.md`](PHASE2.md).
 | | |
 |---|---|
 | Image | 4.04 GiB compressed, 13 layers, built on CI for native amd64 |
-| Cold start | **~218s** on a host that has never pulled the image, **~15s** when base layers are cached |
+| Cold start | **145–220s** scale-from-zero, consistent across 3 measurements |
 | Warm round trip | **13.3s** median for a 3:24 track — about 15x realtime |
 | Split | separation 6.7s, pitch 5.2s, payload + queue 1.4s, model load 0s |
 | Under load | 10 concurrent requests take p50 to **66.9s**, p95 to 89.9s |
@@ -116,9 +116,13 @@ zero). Full detail in [`PHASE2.md`](PHASE2.md).
 
 **Four findings worth more than the numbers:**
 
-**Cold start is not one number.** ~218s versus ~15s on the same endpoint in the same
-scale-to-zero state, depending only on whether the host already holds the base layers. Any
-single quoted figure is misleading.
+**Cold start dominates everything else, and it does not improve with familiarity.** Three
+independent scale-from-zero measurements landed at 217.7s, 171.7s and 144.3s on a 4.04 GiB
+image — including one on an image Runpod's hosts had already pulled repeatedly that day.
+Roughly 86% of a cold request is worker startup and about 1% is the inference the user
+asked for. An earlier version of this README claimed a ~15s cached case was typical; that
+measurement turned out to be a redeploy landing on a host still holding the previous image,
+not a cold start. See `PHASE2.md` for the correction.
 
 **Base64 upload is a reliability problem, not a latency one.** The spec expected to measure
 transfer as a share of latency; it is 11%. The real result is that upload fails most first
