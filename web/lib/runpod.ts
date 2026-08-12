@@ -1,6 +1,7 @@
 import type { TranscriptionOutput } from "./types";
 
 const RUNSYNC_TIMEOUT_MS = 10 * 60 * 1000;
+const MAX_UPLOAD_ATTEMPTS = 4;
 
 export interface TranscribeOptions {
   maxDurationS?: number;
@@ -63,23 +64,50 @@ export async function transcribe(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), RUNSYNC_TIMEOUT_MS);
 
+  const body = JSON.stringify({
+    input: {
+      audio_b64: audio.toString("base64"),
+      max_duration_s: opts.maxDurationS ?? 300,
+      confidence_threshold: opts.confidenceThreshold ?? 0.5,
+      return_stem: opts.returnStem ?? false,
+    },
+  });
+
   try {
-    const res = await fetch(`https://api.runpod.ai/v2/${endpoint}/runsync`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        input: {
-          audio_b64: audio.toString("base64"),
-          max_duration_s: opts.maxDurationS ?? 300,
-          confidence_threshold: opts.confidenceThreshold ?? 0.5,
-          return_stem: opts.returnStem ?? false,
-        },
-      }),
-      signal: controller.signal,
-    });
+    // Large base64 uploads to this endpoint fail intermittently at the transport
+    // layer -- broken pipe, occasionally a corrupted TLS record. Measured at ~80%
+    // first-attempt failure for a 2.2MB payload, so a single attempt is not a
+    // usable product. Retry connection-level failures only; an HTTP status means
+    // the request arrived and retrying would just repeat it.
+    let res: Response | undefined;
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt++) {
+      try {
+        res = await fetch(`https://api.runpod.ai/v2/${endpoint}/runsync`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+          },
+          body,
+          signal: controller.signal,
+        });
+        break;
+      } catch (err) {
+        if (controller.signal.aborted) throw err;
+        lastError = err;
+        if (attempt < MAX_UPLOAD_ATTEMPTS) {
+          await new Promise((r) => setTimeout(r, 1000 * attempt));
+        }
+      }
+    }
+    if (!res) {
+      throw new Error(
+        `upload failed after ${MAX_UPLOAD_ATTEMPTS} attempts: ${
+          lastError instanceof Error ? lastError.message : String(lastError)
+        }`
+      );
+    }
 
     if (!res.ok) {
       throw new Error(`Runpod returned ${res.status}: ${(await res.text()).slice(0, 300)}`);
