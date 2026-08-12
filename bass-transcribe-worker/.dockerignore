@@ -1,0 +1,25 @@
+# The final COPY brings in the whole build context, so anything listed here both
+# keeps the image smaller and stops an unrelated edit from busting the layer cache.
+# Image size is the dominant term in cold start, which is the number Phase 2 exists
+# to measure -- so this file is not just tidiness.
+
+__pycache__/
+*.pyc
+.git/
+.gitignore
+
+# Host-side tooling: never runs inside the worker.
+bench/
+tools/
+test_segment.py
+README.md
+
+# encode.py rewrites this with a multi-MB base64 blob. The documented local smoke
+# test mounts the working directory over /app, so the container reads it from the
+# host rather than from the image.
+test_input.json
+
+*.wav
+*.mp3
+*.flac
+*.m4a
