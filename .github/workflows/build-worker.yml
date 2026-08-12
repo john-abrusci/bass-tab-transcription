@@ -73,8 +73,22 @@ jobs:
       # number Phase 2 cares about instead of it being a thing you go look up.
       - name: Report image size
         run: |
-          RAW=$(docker buildx imagetools inspect \
-            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}" --raw)
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          RAW=$(docker buildx imagetools inspect "$IMAGE@${{ steps.build.outputs.digest }}" --raw)
+
+          # build-push-action attaches provenance attestations by default, so the
+          # build digest points at an OCI index holding the image manifest *and* an
+          # attestation manifest -- there is no .layers at that level. Resolve the
+          # linux/amd64 image first. Handles the plain-manifest case too, in case
+          # attestations are ever turned off.
+          if [ "$(echo "$RAW" | jq -r 'has("manifests")')" = "true" ]; then
+            SUB=$(echo "$RAW" | jq -r '
+              .manifests[]
+              | select(.platform.os == "linux" and .platform.architecture == "amd64")
+              | .digest' | head -1)
+            RAW=$(docker buildx imagetools inspect "$IMAGE@$SUB" --raw)
+          fi
+
           COMPRESSED=$(echo "$RAW" | jq '[.layers[].size] | add')
           {
             echo "### Worker image"
