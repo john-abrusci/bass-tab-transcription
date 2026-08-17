@@ -3,103 +3,6 @@
 Upload an audio file, get a bass tab. GPU inference runs on Runpod Serverless; the app
 layer is Next.js.
 
-```
-Next.js app
-  │  POST audio → /runsync
-  ▼
-Runpod Serverless endpoint (one endpoint, both stages)
-  ├─ Stage 1: htdemucs        → isolated bass stem
-  └─ Stage 2: torchcrepe      → f0 track → note events
-  │  ← JSON note list + timings
-  ▼
-Next.js app
-  ├─ Stage 3: fretboard assignment (DP over hand position)
-  └─ Stage 4: tab rendering + evaluation harness
-```
-
-Built to [`bass-tab-transcription-spec.md`](bass-tab-transcription-spec.md).
-
-## Layout
-
-```
-bass-transcribe-worker/     Phase 0-1: the Runpod worker
-├── handler.py              request → notes, with the per-worker model cache
-├── transcribe.py           separation + pitch tracking
-├── segment.py              f0 frames → note events
-├── test_segment.py         segmentation tests (no GPU, no torch)
-├── bench/measure.py        Phase 2: cold start / warm / concurrency measurement
-└── tools/encode.py         build a test_input.json from an audio file
-
-web/                        Phase 3-4: the app layer
-├── app/                    upload UI + /api/transcribe route
-├── lib/fretboard.ts        DP over (string, fret)
-├── lib/tab.ts              ASCII tab renderer
-├── scripts/eval.ts         note F1 / pitch accuracy / position accuracy
-└── eval/                   ground truth and predictions
-
-PHASE2.md                   the measurement checklist, ready to fill in
-```
-
-## Quickstart
-
-The app runs without a GPU or a Runpod account. With `RUNPOD_*` unset the API route
-serves a synthetic bassline flagged `source: "mock"`, so the DP, the renderer and the
-eval harness are all fully exercisable offline.
-
-```bash
-cd web
-npm install
-npm run dev            # http://localhost:3000
-npm test               # fretboard DP + renderer
-npm run eval -- --sweep
-
-cd ../bass-transcribe-worker
-python test_segment.py # segmentation, pure numpy/scipy
-```
-
-To point at a real endpoint, put `RUNPOD_API_KEY` and `RUNPOD_ENDPOINT_ID` in
-`web/.env.local` (see `.env.example`) and follow
-[`bass-transcribe-worker/README.md`](bass-transcribe-worker/README.md) to build and deploy.
-
-### Transcode before uploading
-
-Base64 upload fails most first attempts at song size (see Results). Until the app does this
-in the browser, shrink the file first — the pipeline downmixes to mono and discards
-everything above 500Hz, so bitrate costs you nothing here:
-
-```bash
-# macOS, no ffmpeg needed. 8.3MB @ 320kbps stereo -> 1.6MB @ 64kbps mono.
-afconvert -f m4af -d aac -b 64000 -c 1 track.mp3 track_64k_mono.m4a
-```
-
-Every measurement in `PHASE2.md` used a file prepared exactly this way.
-
-## Decisions worth defending
-
-**One endpoint, not two.** Separation and pitch tracking share a process, so the stem
-never leaves memory. Two endpoints would mean two cold starts and a stem round-trip over
-the network. The cost is a larger image — the right trade when end-to-end latency is the
-metric.
-
-**torchcrepe over basic-pitch.** One runtime instead of two, ~2GB smaller image, faster
-cold start. The price is writing note segmentation by hand, which turns out to be an
-advantage: `segment.py` is where output quality lives and it is tunable and unit-tested.
-
-**Model weights baked into the image.** Cold starts don't download anything. `TORCH_HOME`
-is set in the Dockerfile so the Phase 2 network-volume comparison is a one-line change.
-
-**Lazy module-level model load.** `_load()` in `handler.py` puts the weights in GPU memory
-on a worker's first request and keeps them there. Loading inside the request path would
-make every call pay model-load cost.
-
-**`timings` in every response.** Separation, pitch, model load and a `cold` flag come back
-with the notes, so Phase 2 numbers fall out of normal operation instead of a separate
-instrumentation pass.
-
-**Fretboard assignment is a DP, not a lookup.** Each pitch has 2–4 playable positions and
-the right one depends entirely on where the hand already is — a shortest-path problem over
-`(string, fret)`.
-
 ## Results
 
 Deployed and measured on a live Runpod Serverless endpoint (RTX 4090, `ADA_24`, scale to
@@ -139,6 +42,24 @@ falling to ~18% under load, against a cold start of 15–218s. The spec asks at 
 pricier GPU becomes cheaper per job; for this workload, never. Derived from the measurements
 rather than measured directly — the reasoning is in `PHASE2.md`.
 
+## Architecture
+
+```
+Next.js app
+  │  POST audio → /runsync
+  ▼
+Runpod Serverless endpoint (one endpoint, both stages)
+  ├─ Stage 1: htdemucs        → isolated bass stem
+  └─ Stage 2: torchcrepe      → f0 track → note events
+  │  ← JSON note list + timings
+  ▼
+Next.js app
+  ├─ Stage 3: fretboard assignment (DP over hand position)
+  └─ Stage 4: tab rendering + evaluation harness
+```
+
+Built to [`bass-tab-transcription-spec.md`](bass-tab-transcription-spec.md).
+
 ## Status
 
 | Phase | | Notes |
@@ -146,9 +67,9 @@ rather than measured directly — the reasoning is in `PHASE2.md`.
 | 0–1 Worker | deployed, verified on hardware | `tools/verify_endpoint.py` asserts known pitches round-trip |
 | 2 Measurement | cold, warm, payload, concurrency done | GPU tiers derived not measured; scale-to-zero economics open |
 | 3 Fretboard DP | works on real output | 362/365 notes placed, 0 pitch mismatches; weights untuned against ground truth |
-| 4 Tab + eval | renders real tabs; **eval has no real ground truth** | harness runs only on a synthetic fixture |
+| 4 Tab + eval | renders real tabs; F1 **1.000** on the sampled fixture | 3 fixtures, exact ground truth; no *recorded* bass yet |
 
-**Verified:** `npm test` (25 assertions), `python test_segment.py` (15 assertions across 11
+**Verified:** `npm test` (25 assertions), `python test_segment.py` (16 assertions across 12
 cases), typecheck, production build, the Docker image building on CI, and a full path from
 audio file through the app to a rendered tab using live GPU inference.
 
@@ -160,7 +81,7 @@ audio file through the app to a rendered tab using live GPU inference.
 | Synthetic over real | harmonic stack | real, bass removed | 0.995 | 100% | 0% |
 | **Sampled over real** | **GM electric bass** | real, bass removed | **1.000** | 100% | 0% |
 
-Ground truth for both comes from `tools/make_eval_track.py`, which synthesises a 32-bar
+Ground truth for all three comes from `tools/make_eval_track.py`, which synthesises a 32-bar
 bassline so every onset and pitch is exact by construction. This sidesteps the reason
 scraped human tabs cannot be used directly: they carry no timestamps, so onset-based F1
 against them would need audio-to-tab alignment first.
@@ -203,13 +124,6 @@ human-tabbed songs. A synthesised note has no "correct" fingering, so the fixtur
 string/fret and the harness reports `n/a` rather than 0% — "not measured" and "measured and
 wrong" must not look the same in a results table.
 
-Known rough edges on real output: notes detected up to C4 (above where a bassline lives,
-likely bleed surviving separation), a few below the low E, and 38% of track duration with no
-detected notes. `segment.py` gates to midi 24–72, which is too generous. Tightening it is a
-one-line change deliberately **not** made yet: the synthetic fixture spans midi 40–59, so it
-cannot tell you whether a tighter gate removes errors or real notes. That needs real ground
-truth.
-
 Known rough edges visible in real output: notes detected up to C4 (above where a bassline
 lives, likely bleed surviving separation), a few below the low E, and 38% of track duration
 with no detected notes — some genuine silence, some probably missed. `segment.py` gates to
@@ -217,8 +131,85 @@ midi 24–72, which is too generous. Tightening it is a one-line change delibera
 made yet, because without eval there is no way to tell whether it removes errors or real
 notes.
 
-## A note on the eval fixture
+## Quickstart
+The app runs without a GPU or a Runpod account. With `RUNPOD_*` unset the API route
+serves a synthetic bassline flagged `source: "mock"`, so the DP, the renderer and the
+eval harness are all fully exercisable offline.
 
+```bash
+cd web
+npm install
+npm run dev            # http://localhost:3000
+npm test               # fretboard DP + renderer
+npm run eval -- --sweep
+
+cd ../bass-transcribe-worker
+python test_segment.py # segmentation, pure numpy/scipy
+```
+
+To point at a real endpoint, put `RUNPOD_API_KEY` and `RUNPOD_ENDPOINT_ID` in
+`web/.env.local` (see `.env.example`) and follow
+[`bass-transcribe-worker/README.md`](bass-transcribe-worker/README.md) to build and deploy.
+
+### Transcode before uploading
+
+Base64 upload fails most first attempts at song size (see Results). Until the app does this
+in the browser, shrink the file first — the pipeline downmixes to mono and discards
+everything above 500Hz, so bitrate costs you nothing here:
+
+```bash
+# macOS, no ffmpeg needed. 8.3MB @ 320kbps stereo -> 1.6MB @ 64kbps mono.
+afconvert -f m4af -d aac -b 64000 -c 1 track.mp3 track_64k_mono.m4a
+```
+
+Every measurement in `PHASE2.md` used a file prepared exactly this way.
+
+## Layout
+```
+bass-transcribe-worker/     Phase 0-1: the Runpod worker
+├── handler.py              request → notes, with the per-worker model cache
+├── transcribe.py           separation + pitch tracking
+├── segment.py              f0 frames → note events
+├── test_segment.py         segmentation tests (no GPU, no torch)
+├── bench/measure.py        Phase 2: cold start / warm / concurrency measurement
+└── tools/encode.py         build a test_input.json from an audio file
+
+web/                        Phase 3-4: the app layer
+├── app/                    upload UI + /api/transcribe route
+├── lib/fretboard.ts        DP over (string, fret)
+├── lib/tab.ts              ASCII tab renderer
+├── scripts/eval.ts         note F1 / pitch accuracy / position accuracy
+└── eval/                   ground truth and predictions
+
+PHASE2.md                   the measurement checklist, ready to fill in
+```
+
+## Decisions worth defending
+**One endpoint, not two.** Separation and pitch tracking share a process, so the stem
+never leaves memory. Two endpoints would mean two cold starts and a stem round-trip over
+the network. The cost is a larger image — the right trade when end-to-end latency is the
+metric.
+
+**torchcrepe over basic-pitch.** One runtime instead of two, ~2GB smaller image, faster
+cold start. The price is writing note segmentation by hand, which turns out to be an
+advantage: `segment.py` is where output quality lives and it is tunable and unit-tested.
+
+**Model weights baked into the image.** Cold starts don't download anything. `TORCH_HOME`
+is set in the Dockerfile so the Phase 2 network-volume comparison is a one-line change.
+
+**Lazy module-level model load.** `_load()` in `handler.py` puts the weights in GPU memory
+on a worker's first request and keeps them there. Loading inside the request path would
+make every call pay model-load cost.
+
+**`timings` in every response.** Separation, pitch, model load and a `cold` flag come back
+with the notes, so Phase 2 numbers fall out of normal operation instead of a separate
+instrumentation pass.
+
+**Fretboard assignment is a DP, not a lookup.** Each pitch has 2–4 playable positions and
+the right one depends entirely on where the hand already is — a shortest-path problem over
+`(string, fret)`.
+
+## A note on the eval fixture
 `web/eval/` ships a synthetic ground-truth/prediction pair so `npm run eval` runs out of
 the box. Its "human" fingering comes from a naive rule (lowest string with a fret under 6),
 which is why `--sweep` reports that ever-higher `fretHeight` scores better: it is
@@ -227,7 +218,6 @@ recovering the rule, not measuring musicality. `fretHeight` is left at a musical
 reading anything into these numbers.
 
 ## Legal
-
 Personal use, on music you own. Private transcription is fine; running this as a service
 for arbitrary uploads is a different question. Scraped tabs are evaluation ground truth
 only, never product content.
