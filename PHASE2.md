@@ -1,14 +1,23 @@
 # Phase 2 — measurements
 
-Every table below is blank. Nothing here is an estimate; fill it in from
-`bass-transcribe-worker/bench/results.jsonl` via `python bench/measure.py report`.
+Measured on a live Runpod Serverless endpoint, RTX 4090 (`ADA_24`), scale to zero, FlashBoot
+OFF, model weights baked into the image. Raw runs are in
+`bass-transcribe-worker/bench/results.jsonl`; `python bench/measure.py report` renders them.
 
-Test track: _(name, length, genre — use the same one for every row or the comparisons mean
-nothing)_
+Nothing here is an estimate. Where a number was reasoned out rather than measured — GPU tier
+selection, the scale-to-zero crossover — the section says so in its heading or opening line.
+
+**Test track:** *Stereosity — New Life Will Grow — 09 Sonata in C#*, 204.4s, transcoded to
+64kbps mono AAC (1.64MB). The same file for every warm and concurrency row. Cold-start rows
+use a 3.2s synthetic tone from `tools/make_test_tone.py` instead, and are labelled as such —
+separation time scales with audio length, so the two are not interchangeable.
+
+Both endpoints used here have since been deleted; the numbers are not re-runnable without
+recreating one.
 
 ---
 
-## Preliminary: synthetic 3.2s clip, not the real track
+## Cold start (measured)
 
 These are from `tools/make_test_tone.py` — four open-string notes, 3.2s — used to verify
 the endpoint end to end. **Separation time scales with audio length, so none of these
@@ -64,28 +73,40 @@ Roughly 1% of a cold request is the work the user asked for.
 **`pitch_s` is ~15s on a 3.2s clip and barely moves with audio length** — that is
 torchcrepe loading its weights on first call, not inference. Every run above hit a cold
 worker (`idleTimeout: 5` scales down almost instantly), so this cost appears every time.
-On a warm worker it should collapse. Measuring that requires raising `idleTimeout` first —
-which is also why there are no warm numbers here yet.
+
+That prediction held: on a warm worker pitch drops to 4.3–5.2s (see Warm execution), and the
+concurrency burst measured both states side by side — 4.29–6.22s warm versus 18.78–24.89s
+cold. So ~14–20s of a cold worker's pitch stage is torchcrepe initialisation, not inference.
 
 ---
 
-## Cold start
+## Cold start: weights baked in vs. network volume — NOT MEASURED
 
-Zero warm workers. `python bench/measure.py cold --audio track.mp3 --label "..."`
+The measured cold-start numbers are in the section above. This section covers the one
+cold-start experiment that was never run.
 
-| Config | Wall (request → response) | Container pull + boot | Model load | Separation | Pitch |
+| Config | Wall | Pull + boot | Model load | Separation | Pitch |
 |---|---|---|---|---|---|
-| Weights baked into image | | | | | |
-| Weights on network volume | | | | | |
+| Weights baked into image | 168.1s | 144.3s | 1.9s | 2.0s | 17.2s |
+| Weights on network volume | — | — | — | — | — |
 
-Container pull + boot is `wall − total_s − (queue wait)`; `worker_uptime_at_request_s` in
-the response tells you how long the process had been alive when the request landed, which
-splits pull from load.
+**Status: open, and now the highest-value remaining measurement.**
 
-**Which is faster, and by how much?**
+This was originally deprioritised on the reasoning that layer caching already got the common
+case to ~15s, so moving weights off the image would only help a rare first pull. **That
+reasoning was based on a measurement that turned out not to be a cold start** (see above).
+With every genuine scale-from-zero start landing at 145–220s, and 86% of a cold request
+being worker startup, the pull *is* the common case.
 
-**Why:** _(image pull is one big sequential read; a volume is a smaller image but a slower
-random read. Say which dominated here.)_
+To run it: attach a network volume, copy the demucs cache onto it, and set
+`TORCH_HOME=/runpod-volume/torch` as an endpoint env var — no rebuild, the Dockerfile
+already parameterises it. Then compare `measure.py cold` runs.
+
+**Predict before measuring.** The image is 4.04 GiB, mostly the CUDA base layer, and the
+demucs weights are only ~80MB of it. Moving 80MB off a 4 GiB image should barely help — the
+pull is dominated by the base image, not the weights. If that holds, the real lever is a
+slimmer base image, not a network volume, and this experiment's value is in ruling out the
+obvious-sounding fix rather than finding one.
 
 ---
 
@@ -150,27 +171,41 @@ anything in the code. It is the reason to report min/median/max rather than a me
 
 ---
 
-## GPU selection
+## Cost per job
 
-Same 4-minute track on each tier.
+From the billing API, all on RTX 4090 (`ADA_24`). GPU selection is covered further down —
+it was derived rather than measured.
 
-| GPU | Separation | Pitch | Total | Cost/hr | Cost/job | Notes |
-|---|---|---|---|---|---|---|
-| RTX A4000 / A5000 | | | | | | cheapest viable |
-| RTX 4090 / L40S | | | | | | mid |
-| A100 / H100 | | | | | | almost certainly overkill |
+| | |
+|---|---|
+| Total spend | **$0.479** |
+| — GPU | $0.321 (67%) |
+| — Fees | $0.156 (**33%**) |
+| — Disk | $0.001 |
+| Jobs run | ~40 |
+| **Mean cost per job** | **~$0.012** |
 
-**At what job volume does a faster, pricier GPU become the cheaper choice per job?**
+**Correction.** An earlier reading of this figure mid-session reported $0.030 total and
+~$0.001/job. That was taken before usage settled and was wrong by 16x. Anything downstream
+of the old number — including the scale-to-zero crossover below — is recalculated here.
 
-Cost per job is `(cost/hr ÷ 3600) × billed seconds`, and billed seconds includes cold start
-on a scale-to-zero endpoint. So the crossover depends on the cold-start share, not just on
-inference speed: a faster GPU that still pays the same 30s pull wins less than its
-throughput suggests.
+Treat $0.479 as a **floor**: it covers endpoint `v22yhtuixccxc0` only. The second endpoint
+used for the cold-start re-measurement had not posted when this was queried.
 
-For a bursty consumer workload the answer is usually "never" — derive it rather than
-assuming it.
+### The mean hides a 13x spread
 
-**Answer:**
+Back-solving the effective rate from GPU spend over roughly 22 minutes of worker time gives
+**~$0.88/hr**, which is in the expected range for a serverless 4090. Applying it:
+
+| Job type | Billed worker time | Cost |
+|---|---|---|
+| Warm | ~13s | **~$0.003** |
+| Cold | ~168s | **~$0.041** |
+
+**A cold job costs about 13x a warm one.** Cold start is not only a latency problem — it
+multiplies cost per job by an order of magnitude, because the pull and boot are billed
+worker time. This is also why fees are a third of the bill: much of what was paid for was
+workers starting up, not inference.
 
 ---
 
@@ -178,11 +213,29 @@ assuming it.
 
 | | Value |
 |---|---|
-| Cost of one always-warm worker, 24h idle | |
-| Cold start penalty per job | |
-| Jobs/day at which a warm worker pays for itself | |
+| Cost of one always-warm worker, 24h idle | ~$17.76/day (4090 at $0.74/hr) |
+| Measured cost per job, scale-to-zero | ~$0.012 |
+| Cold-start penalty per job | ~145–220s latency, ~13x cost |
+| **Jobs/day at which a warm worker pays for itself** | **~1,500** |
 
-**Which would you ship, and why?**
+$17.76 ÷ $0.012 ≈ 1,480 jobs/day, or roughly one job a minute sustained. The hourly rate is
+the *pod* price used as a proxy; serverless active-worker pricing differs, so treat the
+crossover as an order-of-magnitude answer.
+
+**Which would I ship? Scale-to-zero, and it is not close on cost.** At any plausible volume
+for this workload the endpoint is idle almost all the time, and paying $17.76/day to avoid a
+cold start that happens a few times a day is indefensible.
+
+But the honest version has a caveat the cost table hides: **scale-to-zero makes the first
+user of every idle period wait 2.5–3.5 minutes.** That is a bad enough experience that the
+right answer is probably neither pure option — it is scale-to-zero plus an async API and a
+progress UI, so the wait is visible and expected rather than looking like a hang. The
+earlier `/runsync` bug is a symptom of the same thing: a synchronous request/response shape
+does not fit a workload whose cold path is three minutes long.
+
+The genuinely interesting lever is not warm-vs-cold, it is **making cold cheaper** — a
+smaller image attacks the 86% of a cold request that is worker startup, and would improve
+latency and cost per job at the same time.
 
 ---
 
