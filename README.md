@@ -42,6 +42,18 @@ falling to ~18% under load, against a cold start of 15–218s. The spec asks at 
 pricier GPU becomes cheaper per job; for this workload, never. Derived from the measurements
 rather than measured directly — the reasoning is in `PHASE2.md`.
 
+### Notes from the user's seat
+
+Deploying this meant using Runpod Serverless as a customer for the first time, so I kept a
+log of everywhere the product surprised, blocked or delighted me:
+**[`FRICTION-LOG.md`](FRICTION-LOG.md)** — seven observations ranked by what I would fix
+first, plus what the product does well and what I would deliberately not prioritise.
+
+It is a snapshot, not a verdict: everything in it was measured on 12 August 2026 from a
+single client against one GPU pool over a few hours, and one of the seven items is ranked
+*below* its apparent severity because I could not isolate whether the cause was the platform
+or my own network. Runpod ships continuously and some of it may already be out of date.
+
 ## Architecture
 
 ```

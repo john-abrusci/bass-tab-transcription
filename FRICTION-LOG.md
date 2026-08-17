@@ -1,5 +1,11 @@
 # Runpod Serverless — friction log
 
+> **A snapshot, not a standing claim.** All measurements were taken on **12 August 2026**,
+> against image `ghcr.io/john-abrusci/bass-transcribe:sha-085d904` (4.04 GiB) on endpoints
+> `v22yhtuixccxc0` and `qez02qfcx3n6cd`, GPU pool `ADA_24` (RTX 4090), FlashBoot OFF, from a
+> single client on a single network. Runpod ships continuously; anything here may already be
+> fixed, and nothing in this document has been re-checked since that date.
+
 Notes from putting a real GPU workload on Runpod Serverless: audio source separation plus
 pitch tracking, deployed, measured, and torn down. Every observation below came from using
 the product, not from reading about it. Evidence is in [`PHASE2.md`](PHASE2.md); the raw
@@ -8,10 +14,14 @@ runs are in `bass-transcribe-worker/bench/results.jsonl`.
 Ranked by what I would fix first, with the reasoning for the ranking, because the ranking is
 the actual claim.
 
-**Read the limits first.** This is n=1: one region, one GPU pool (`ADA_24`), one image, ~25
-jobs over a few hours, by someone seeing the product for the first time. Small samples,
-and some of what looks like a platform issue may be my network or my inexperience. Where I
-could not isolate a cause, I say so.
+**Read the limits first.** This is n=1: one region, one GPU pool, one image, ~25 jobs over a
+few hours, by someone seeing the product for the first time. Small samples, and some of what
+looks like a platform issue may be my network or my inexperience. Where I could not isolate a
+cause, I say so — and one of the seven items is ranked *below* its apparent severity for
+exactly that reason.
+
+This is written as a user's notes offered constructively, not as an audit. It includes what
+the product does well and what I would deliberately not prioritise.
 
 ---
 
@@ -21,7 +31,7 @@ could not isolate a cause, I say so.
 |---|---|---|---|
 | 1 | Cold start is unknowable before you commit | Blocks the buy decision itself | Docs + console surface |
 | 2 | `/runsync` is not synchronous | Cheap to fix, bit me in three places | Docs + naming |
-| 3 | Base64 upload fails most first attempts | Documented path, high failure rate — but unisolated | Investigation first |
+| 3 | Base64 upload unreliable above ~2MB — **cause not isolated** | High failure rate, but may be my network rather than the platform | Investigation, not a fix |
 | 4 | Autoscaler config implies behaviour it does not deliver | Silent, and users will over-trust it | Observability |
 | 5 | Availability signal did not predict capacity | Misleads GPU selection | Data accuracy |
 | 6 | Billing lags and has no per-job granularity | Blocks unit-economics reasoning | Reporting |
@@ -85,7 +95,7 @@ scale-to-zero probably want `/run` plus polling by default, and the docs could s
 
 ---
 
-## 3. Base64 upload fails most first attempts at song size
+## 3. Base64 upload unreliable above ~2MB — cause not isolated
 
 **What I measured:**
 
