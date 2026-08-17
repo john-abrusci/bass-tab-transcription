@@ -176,36 +176,50 @@ anything in the code. It is the reason to report min/median/max rather than a me
 From the billing API, all on RTX 4090 (`ADA_24`). GPU selection is covered further down —
 it was derived rather than measured.
 
-| | |
-|---|---|
-| Total spend | **$0.479** |
-| — GPU | $0.321 (67%) |
-| — Fees | $0.156 (**33%**) |
-| — Disk | $0.001 |
-| Jobs run | ~40 |
-| **Mean cost per job** | **~$0.012** |
+Final figures, after both endpoints' usage settled. Job counts are each endpoint's
+`completed` counter, read immediately before deletion.
 
-**Correction.** An earlier reading of this figure mid-session reported $0.030 total and
-~$0.001/job. That was taken before usage settled and was wrong by 16x. Anything downstream
-of the old number — including the scale-to-zero crossover below — is recalculated here.
+| Endpoint | Jobs | GPU | Fees | Disk | Total | Per job |
+|---|---|---|---|---|---|---|
+| `v22yhtuixccxc0` — verification, warm, burst | 23 | $0.321 | $0.156 | $0.001 | $0.479 | $0.021 |
+| `qez02qfcx3n6cd` — cold-start re-measurement | 2 | $0.025 | $0.012 | — | $0.037 | $0.018 |
+| **Total** | **25** | **$0.346** | **$0.168** | **$0.001** | **$0.515** | **~$0.021** |
 
-Treat $0.479 as a **floor**: it covers endpoint `v22yhtuixccxc0` only. The second endpoint
-used for the cold-start re-measurement had not posted when this was queried.
+Fees are **33% of the bill**, which is worth noting on its own: a third of the cost is not
+GPU time.
 
-### The mean hides a 13x spread
+**This number was misreported twice before landing here.** First as $0.030 total / ~$0.001
+per job, read mid-session before usage had posted. Then as $0.479 / ~$0.012 per job, which
+had the right total for one endpoint but used a guessed job count of ~40 instead of the
+actual 25. The lesson is narrow and practical: **Runpod billing lags materially, so do not
+quote cost until the endpoint has been deleted and the figures have settled.**
 
-Back-solving the effective rate from GPU spend over roughly 22 minutes of worker time gives
-**~$0.88/hr**, which is in the expected range for a serverless 4090. Applying it:
+### A retracted claim: cold jobs are not obviously more expensive
 
-| Job type | Billed worker time | Cost |
-|---|---|---|
-| Warm | ~13s | **~$0.003** |
-| Cold | ~168s | **~$0.041** |
+An earlier version of this section asserted that a cold job costs ~13x a warm one (~$0.041
+vs ~$0.003), derived by back-solving an effective hourly rate and multiplying by wall time.
+**The per-endpoint split above contradicts it.**
 
-**A cold job costs about 13x a warm one.** Cold start is not only a latency problem — it
-multiplies cost per job by an order of magnitude, because the pull and boot are billed
-worker time. This is also why fees are a third of the bill: much of what was paid for was
-workers starting up, not inference.
+Endpoint `qez02qfcx3n6cd` ran nothing but cold starts and cost **$0.018/job**. Endpoint
+`v22yhtuixccxc0` ran 23 mostly-warm jobs and cost **more**, at $0.021/job. If cold starts
+carried a 13x cost penalty, that ordering could not happen.
+
+The most likely explanation is that the two endpoints were not configured alike:
+`v22yhtuixccxc0` had `idleTimeout` raised from 5s to 120s for the warm and concurrency
+tests, so its workers sat idle-but-billing between requests, and `workersMax` was raised to
+10 for the burst. **Idle worker time, not cold start, plausibly dominates its cost.** A
+secondary possibility is that Runpod does not bill the full image pull — the arithmetic on
+endpoint 2 implies roughly 50s of billed time per job against ~181s of wall time — which
+would be a genuinely customer-friendly detail if true.
+
+Both explanations are inference from two coarse aggregates. **Separating warm from cold cost
+properly needs per-job billing data, which the billing API does not expose at this
+granularity.** Recorded as an open question rather than an answer.
+
+The general lesson stands even though the specific number did not: cost per job is driven by
+*billed worker seconds*, which includes time the worker is alive but not working. That makes
+`idleTimeout` a cost lever, and it is the one setting here that was changed for measurement
+convenience without considering its billing impact.
 
 ---
 
@@ -214,13 +228,13 @@ workers starting up, not inference.
 | | Value |
 |---|---|
 | Cost of one always-warm worker, 24h idle | ~$17.76/day (4090 at $0.74/hr) |
-| Measured cost per job, scale-to-zero | ~$0.012 |
-| Cold-start penalty per job | ~145–220s latency, ~13x cost |
-| **Jobs/day at which a warm worker pays for itself** | **~1,500** |
+| Measured cost per job, scale-to-zero | ~$0.021 |
+| Cold-start penalty per job | ~145–220s latency; cost penalty **not established** |
+| **Jobs/day at which a warm worker pays for itself** | **~850** |
 
-$17.76 ÷ $0.012 ≈ 1,480 jobs/day, or roughly one job a minute sustained. The hourly rate is
-the *pod* price used as a proxy; serverless active-worker pricing differs, so treat the
-crossover as an order-of-magnitude answer.
+$17.76 ÷ $0.021 ≈ 846 jobs/day, or roughly one job every two minutes sustained. The hourly
+rate is the *pod* price used as a proxy; serverless active-worker pricing differs, so treat
+the crossover as an order-of-magnitude answer, not a threshold to plan against.
 
 **Which would I ship? Scale-to-zero, and it is not close on cost.** At any plausible volume
 for this workload the endpoint is idle almost all the time, and paying $17.76/day to avoid a

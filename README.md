@@ -112,6 +112,7 @@ zero). Full detail in [`PHASE2.md`](PHASE2.md).
 | Warm round trip | **13.3s** median for a 3:24 track — about 15x realtime |
 | Split | separation 6.7s, pitch 5.2s, payload + queue 1.4s, model load 0s |
 | Under load | 10 concurrent requests take p50 to **66.9s**, p95 to 89.9s |
+| Cost | **$0.515 for 25 jobs — ~$0.021/job**, of which 33% is fees rather than GPU |
 | End to end | 365 notes from a real track, rendered as tab, zero DP pitch mismatches |
 
 **Four findings worth more than the numbers:**
