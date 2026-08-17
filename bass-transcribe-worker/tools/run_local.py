@@ -45,6 +45,9 @@ def main() -> None:
     p.add_argument("--max-s", type=float, default=300)
     p.add_argument("--conf", type=float, default=0.5)
     p.add_argument("--device", default="auto")
+    p.add_argument("--max-gap-s", type=float, default=None,
+                   help="override segment.py max_gap_s (unvoiced gap tolerated within one note)")
+    p.add_argument("--min-note-s", type=float, default=None)
     a = p.parse_args()
 
     from demucs.pretrained import get_model
@@ -70,7 +73,12 @@ def main() -> None:
 
     # torchcrepe is CPU/CUDA only in practice; MPS support is unreliable.
     pitch_device = device if device.type == "cuda" else torch.device("cpu")
-    notes, tempo = pitch_to_notes(stem, sr, pitch_device, conf_threshold=a.conf)
+    seg_kwargs = {}
+    if a.max_gap_s is not None:
+        seg_kwargs["max_gap_s"] = a.max_gap_s
+    if a.min_note_s is not None:
+        seg_kwargs["min_note_s"] = a.min_note_s
+    notes, tempo = pitch_to_notes(stem, sr, pitch_device, conf_threshold=a.conf, **seg_kwargs)
     t2 = time.time()
 
     out = {

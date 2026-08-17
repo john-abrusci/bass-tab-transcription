@@ -28,7 +28,17 @@ MEDIAN_WINDOW = 5  # frames; 5 @ 10ms hop = 50ms, enough to swallow an octave bl
 HYSTERESIS_ST = 0.6  # extra semitones beyond the +/-0.5 rounding edge before we switch
 SWITCH_FRAMES = 2  # consecutive frames agreeing on a new pitch before we commit
 MIN_NOTE_S = 0.06  # anything shorter is noise, not a note
-MAX_GAP_S = 0.04  # unvoiced gap this short at the same pitch = one note, not two
+# Unvoiced gap this short at the same pitch = one note, not two.
+#
+# Note the comparison is `gap > max_gap_frames`, so this bridges gaps of up to
+# and including MAX_GAP_S and splits anything longer: at 0.02 that means 20ms
+# dropouts are bridged and 30ms gaps split.
+#
+# Lowered 0.04 -> 0.02 on eval evidence. At 0.04 a pitch repeated across a bar
+# boundary with a 30ms gap was merged into one note, which cost two notes on the
+# sampled-bass fixture (F1 0.995 -> 1.000 when fixed). Bridging genuine dropouts
+# still works; see test_short_dropout_bridged and test_same_pitch_reattack_splits.
+MAX_GAP_S = 0.02
 
 
 def hz_to_midi(f0_hz: np.ndarray) -> np.ndarray:

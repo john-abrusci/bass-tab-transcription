@@ -154,10 +154,11 @@ audio file through the app to a rendered tab using live GPU inference.
 
 **Accuracy, measured:**
 
-| Fixture | Note F1 | Pitch acc | Octave err | Predicted MIDI range |
-|---|---|---|---|---|
-| Synthetic bass over **synthesised** backing | 0.971 | 100% | 0% | 29–59 |
-| Synthetic bass over **real** backing (bass removed) | **0.995** | 100% | 0% | 40–59 |
+| Fixture | Bass | Backing | Note F1 | Pitch acc | Octave err |
+|---|---|---|---|---|---|
+| Synthetic over synthesised | harmonic stack | synthesised | 0.971 | 100% | 0% |
+| Synthetic over real | harmonic stack | real, bass removed | 0.995 | 100% | 0% |
+| **Sampled over real** | **GM electric bass** | real, bass removed | **1.000** | 100% | 0% |
 
 Ground truth for both comes from `tools/make_eval_track.py`, which synthesises a 32-bar
 bassline so every onset and pitch is exact by construction. This sidesteps the reason
@@ -176,12 +177,26 @@ out-of-distribution and spectrally careless — pitched at 330–500Hz, collidin
 backing the pipeline invented notes down at MIDI 29, well below the true 40–59; against real
 backing it produced exactly 40–59.
 
-**What is still unmeasured is the bass itself.** Both fixtures use a *synthesised* bass —
-a clean harmonic stack with no fret noise, no dynamics, no amp character and no room. That
-is now the dominant unrealism, and it is precisely what pitch tracking sees. These numbers
-establish that separation and segmentation handle real *accompaniment* well; they say
-nothing about how the pipeline handles a real recorded bass tone. Closing that gap needs
-either a DI recording of a known part or a sampled bass instrument driven by known MIDI.
+**Sampled bass closed the timbre gap, and timbre turned out not to matter.**
+`tools/make_sampled_bass.py` renders the identical note pattern through Apple's built-in GM
+soundbank (program 33, electric bass finger) via FluidSynth — real sampled audio, no
+third-party download. Its spectrum is markedly richer than the synthesised stack: 20.5% of
+energy in 300–800Hz versus 7.7%, and 8.4% above that versus 1.7%. It scored the same 0.995,
+note for note, on the same two errors.
+
+**Those two errors then turned out to be a real bug, not a limit.** Both fixtures missed the
+same thing: a pitch repeated across a bar boundary with a 30ms unvoiced gap, which
+`segment.py` merged into one note because `max_gap_s` was 0.04. Lowering it to 0.02 splits
+the re-attack while still bridging 20ms dropouts, taking the sampled fixture to **F1 1.000**
+with no regression on the others. Locked in by `test_same_pitch_reattack_splits`.
+
+That is the eval harness doing the job it exists for: a specific defect, localised to a
+named constant, fixed with evidence, and a regression test so it stays fixed.
+
+**Still unmeasured: a genuinely recorded bass.** Apple's DLS bank is 2MB, so its samples are
+short and loop-based, and every note here is MIDI-quantised at constant velocity. Real
+playing dynamics, timing humanisation, fret noise and amp character remain untested — a DI
+recording of a known part is the remaining step, and it reintroduces hand annotation.
 
 **Still unmeasured: accuracy on real recorded music, and position accuracy.** Both need
 human-tabbed songs. A synthesised note has no "correct" fingering, so the fixture omits

@@ -83,6 +83,21 @@ def test_short_dropout_bridged():
                  f"got {len(notes)}")
 
 
+def test_same_pitch_reattack_splits():
+    """A note re-struck at the same pitch must not merge with the one before it.
+
+    Regression test for a real failure the eval harness caught: a bassline
+    repeating a pitch across a bar boundary left a 30ms unvoiced gap, and
+    max_gap_s of 0.04 swallowed it, turning two notes into one. This is the case
+    that sets the lower bound on dropout tolerance -- bridging has to stay short
+    enough to leave re-attacks intact.
+    """
+    f0, per = build_track([(43, 0.27), (None, 0.03), (43, 0.54)])
+    notes = segment_notes(f0, per, HOP)
+    return check("30ms gap at the same pitch splits into two notes", len(notes) == 2,
+                 f"got {len(notes)}: {[(n['midi'], round(n['duration'],2)) for n in notes]}")
+
+
 def test_long_gap_splits():
     f0, per = build_track([(38, 0.3), (None, 0.25), (38, 0.3)])
     notes = segment_notes(f0, per, HOP)

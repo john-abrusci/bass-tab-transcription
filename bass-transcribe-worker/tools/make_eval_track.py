@@ -196,11 +196,24 @@ def main() -> None:
     p.add_argument("--backing-audio", default=None,
                    help="mix under real recorded audio instead of synthesised backing. "
                         "Must already be bass-free -- see tools/strip_bass.py.")
+    p.add_argument("--bass-audio", default=None,
+                   help="use a pre-rendered bass (see tools/make_sampled_bass.py) instead of "
+                        "synthesising one. Ground truth still comes from PATTERN, so it stays "
+                        "exact -- the renderer must use the same --bpm and --bars.")
     p.add_argument("--bass-gain", type=float, default=1.0)
     p.add_argument("--backing-gain", type=float, default=0.85)
     a = p.parse_args()
 
+    # Truth always comes from the pattern, never from the audio, so a rendered
+    # bass and a synthesised one describe exactly the same notes.
     bass, truth = build_bass(a.bpm, a.bars)
+    if a.bass_audio:
+        rendered, _ = load_backing(a.bass_audio, 10**9)
+        if abs(len(rendered) - len(bass)) > SR:  # more than a second adrift
+            print(f"WARNING: rendered bass is {len(rendered)/SR:.1f}s but the pattern spans "
+                  f"{len(bass)/SR:.1f}s -- check --bpm/--bars match the renderer")
+        n = max(len(rendered), len(bass))
+        bass = np.pad(rendered, (0, n - len(rendered)))[:n]
     bass = bass / max(np.abs(bass).max(), 1e-9)
     mix = bass * a.bass_gain
 
@@ -234,6 +247,7 @@ def main() -> None:
                 + ("-bass-only" if a.no_backing else ""),
                 "tempo_bpm": a.bpm,
                 "synthetic": True,
+                "bass_source": "sampled (pre-rendered)" if a.bass_audio else "synthesised harmonic stack",
                 "backing": "real recorded audio (bass removed)" if a.backing_audio
                            else ("none" if a.no_backing else "synthesised drums + chords"),
                 "note": "Positions omitted deliberately: a synthesised note has no correct "

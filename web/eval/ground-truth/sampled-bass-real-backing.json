@@ -1,0 +1,970 @@
+{
+  "song": "sampled bass (GM electric) + real backing",
+  "tempo_bpm": 100.0,
+  "synthetic": true,
+  "bass_source": "sampled -- GM program 33 via gs_instruments.dls",
+  "note": "Positions omitted deliberately: a rendered note has no correct fingering, so position accuracy is not measurable from this fixture.",
+  "notes": [
+    {
+      "onset": 0.0,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 0.6,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 1.2,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 1.5,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 1.8,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 2.1,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 2.4,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 3.0,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 3.6,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 3.9,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 4.2,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 4.5,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 4.8,
+      "duration": 0.54,
+      "midi": 45
+    },
+    {
+      "onset": 5.4,
+      "duration": 0.54,
+      "midi": 52
+    },
+    {
+      "onset": 6.0,
+      "duration": 0.27,
+      "midi": 57
+    },
+    {
+      "onset": 6.3,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 6.6,
+      "duration": 0.27,
+      "midi": 45
+    },
+    {
+      "onset": 6.9,
+      "duration": 0.27,
+      "midi": 48
+    },
+    {
+      "onset": 7.2,
+      "duration": 0.54,
+      "midi": 45
+    },
+    {
+      "onset": 7.8,
+      "duration": 0.54,
+      "midi": 52
+    },
+    {
+      "onset": 8.4,
+      "duration": 0.27,
+      "midi": 57
+    },
+    {
+      "onset": 8.7,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 9.0,
+      "duration": 0.27,
+      "midi": 45
+    },
+    {
+      "onset": 9.3,
+      "duration": 0.27,
+      "midi": 48
+    },
+    {
+      "onset": 9.6,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 10.2,
+      "duration": 0.54,
+      "midi": 54
+    },
+    {
+      "onset": 10.8,
+      "duration": 0.27,
+      "midi": 59
+    },
+    {
+      "onset": 11.1,
+      "duration": 0.27,
+      "midi": 54
+    },
+    {
+      "onset": 11.4,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 11.7,
+      "duration": 0.27,
+      "midi": 50
+    },
+    {
+      "onset": 12.0,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 12.6,
+      "duration": 0.54,
+      "midi": 54
+    },
+    {
+      "onset": 13.2,
+      "duration": 0.27,
+      "midi": 59
+    },
+    {
+      "onset": 13.5,
+      "duration": 0.27,
+      "midi": 54
+    },
+    {
+      "onset": 13.8,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 14.1,
+      "duration": 0.27,
+      "midi": 50
+    },
+    {
+      "onset": 14.4,
+      "duration": 0.54,
+      "midi": 45
+    },
+    {
+      "onset": 15.0,
+      "duration": 0.54,
+      "midi": 52
+    },
+    {
+      "onset": 15.6,
+      "duration": 0.27,
+      "midi": 57
+    },
+    {
+      "onset": 15.9,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 16.2,
+      "duration": 0.27,
+      "midi": 45
+    },
+    {
+      "onset": 16.5,
+      "duration": 0.27,
+      "midi": 48
+    },
+    {
+      "onset": 16.8,
+      "duration": 0.54,
+      "midi": 45
+    },
+    {
+      "onset": 17.4,
+      "duration": 0.54,
+      "midi": 52
+    },
+    {
+      "onset": 18.0,
+      "duration": 0.27,
+      "midi": 57
+    },
+    {
+      "onset": 18.3,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 18.6,
+      "duration": 0.27,
+      "midi": 45
+    },
+    {
+      "onset": 18.9,
+      "duration": 0.27,
+      "midi": 48
+    },
+    {
+      "onset": 19.2,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 19.8,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 20.4,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 20.7,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 21.0,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 21.3,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 21.6,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 22.2,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 22.8,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 23.1,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 23.4,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 23.7,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 24.0,
+      "duration": 0.54,
+      "midi": 43
+    },
+    {
+      "onset": 24.6,
+      "duration": 0.54,
+      "midi": 50
+    },
+    {
+      "onset": 25.2,
+      "duration": 0.27,
+      "midi": 55
+    },
+    {
+      "onset": 25.5,
+      "duration": 0.27,
+      "midi": 50
+    },
+    {
+      "onset": 25.8,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 26.1,
+      "duration": 0.27,
+      "midi": 46
+    },
+    {
+      "onset": 26.4,
+      "duration": 0.54,
+      "midi": 43
+    },
+    {
+      "onset": 27.0,
+      "duration": 0.54,
+      "midi": 50
+    },
+    {
+      "onset": 27.6,
+      "duration": 0.27,
+      "midi": 55
+    },
+    {
+      "onset": 27.9,
+      "duration": 0.27,
+      "midi": 50
+    },
+    {
+      "onset": 28.2,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 28.5,
+      "duration": 0.27,
+      "midi": 46
+    },
+    {
+      "onset": 28.8,
+      "duration": 0.54,
+      "midi": 45
+    },
+    {
+      "onset": 29.4,
+      "duration": 0.54,
+      "midi": 52
+    },
+    {
+      "onset": 30.0,
+      "duration": 0.27,
+      "midi": 57
+    },
+    {
+      "onset": 30.3,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 30.6,
+      "duration": 0.27,
+      "midi": 45
+    },
+    {
+      "onset": 30.9,
+      "duration": 0.27,
+      "midi": 48
+    },
+    {
+      "onset": 31.2,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 31.8,
+      "duration": 0.54,
+      "midi": 54
+    },
+    {
+      "onset": 32.4,
+      "duration": 0.27,
+      "midi": 59
+    },
+    {
+      "onset": 32.7,
+      "duration": 0.27,
+      "midi": 54
+    },
+    {
+      "onset": 33.0,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 33.3,
+      "duration": 0.27,
+      "midi": 50
+    },
+    {
+      "onset": 33.6,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 34.2,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 34.8,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 35.1,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 35.4,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 35.7,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 36.0,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 36.6,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 37.2,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 37.5,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 37.8,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 38.1,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 38.4,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 39.0,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 39.6,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 39.9,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 40.2,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 40.5,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 40.8,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 41.4,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 42.0,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 42.3,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 42.6,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 42.9,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 43.2,
+      "duration": 0.54,
+      "midi": 45
+    },
+    {
+      "onset": 43.8,
+      "duration": 0.54,
+      "midi": 52
+    },
+    {
+      "onset": 44.4,
+      "duration": 0.27,
+      "midi": 57
+    },
+    {
+      "onset": 44.7,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 45.0,
+      "duration": 0.27,
+      "midi": 45
+    },
+    {
+      "onset": 45.3,
+      "duration": 0.27,
+      "midi": 48
+    },
+    {
+      "onset": 45.6,
+      "duration": 0.54,
+      "midi": 45
+    },
+    {
+      "onset": 46.2,
+      "duration": 0.54,
+      "midi": 52
+    },
+    {
+      "onset": 46.8,
+      "duration": 0.27,
+      "midi": 57
+    },
+    {
+      "onset": 47.1,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 47.4,
+      "duration": 0.27,
+      "midi": 45
+    },
+    {
+      "onset": 47.7,
+      "duration": 0.27,
+      "midi": 48
+    },
+    {
+      "onset": 48.0,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 48.6,
+      "duration": 0.54,
+      "midi": 54
+    },
+    {
+      "onset": 49.2,
+      "duration": 0.27,
+      "midi": 59
+    },
+    {
+      "onset": 49.5,
+      "duration": 0.27,
+      "midi": 54
+    },
+    {
+      "onset": 49.8,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 50.1,
+      "duration": 0.27,
+      "midi": 50
+    },
+    {
+      "onset": 50.4,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 51.0,
+      "duration": 0.54,
+      "midi": 54
+    },
+    {
+      "onset": 51.6,
+      "duration": 0.27,
+      "midi": 59
+    },
+    {
+      "onset": 51.9,
+      "duration": 0.27,
+      "midi": 54
+    },
+    {
+      "onset": 52.2,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 52.5,
+      "duration": 0.27,
+      "midi": 50
+    },
+    {
+      "onset": 52.8,
+      "duration": 0.54,
+      "midi": 45
+    },
+    {
+      "onset": 53.4,
+      "duration": 0.54,
+      "midi": 52
+    },
+    {
+      "onset": 54.0,
+      "duration": 0.27,
+      "midi": 57
+    },
+    {
+      "onset": 54.3,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 54.6,
+      "duration": 0.27,
+      "midi": 45
+    },
+    {
+      "onset": 54.9,
+      "duration": 0.27,
+      "midi": 48
+    },
+    {
+      "onset": 55.2,
+      "duration": 0.54,
+      "midi": 45
+    },
+    {
+      "onset": 55.8,
+      "duration": 0.54,
+      "midi": 52
+    },
+    {
+      "onset": 56.4,
+      "duration": 0.27,
+      "midi": 57
+    },
+    {
+      "onset": 56.7,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 57.0,
+      "duration": 0.27,
+      "midi": 45
+    },
+    {
+      "onset": 57.3,
+      "duration": 0.27,
+      "midi": 48
+    },
+    {
+      "onset": 57.6,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 58.2,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 58.8,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 59.1,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 59.4,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 59.7,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 60.0,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 60.6,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 61.2,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 61.5,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 61.8,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 62.1,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 62.4,
+      "duration": 0.54,
+      "midi": 43
+    },
+    {
+      "onset": 63.0,
+      "duration": 0.54,
+      "midi": 50
+    },
+    {
+      "onset": 63.6,
+      "duration": 0.27,
+      "midi": 55
+    },
+    {
+      "onset": 63.9,
+      "duration": 0.27,
+      "midi": 50
+    },
+    {
+      "onset": 64.2,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 64.5,
+      "duration": 0.27,
+      "midi": 46
+    },
+    {
+      "onset": 64.8,
+      "duration": 0.54,
+      "midi": 43
+    },
+    {
+      "onset": 65.4,
+      "duration": 0.54,
+      "midi": 50
+    },
+    {
+      "onset": 66.0,
+      "duration": 0.27,
+      "midi": 55
+    },
+    {
+      "onset": 66.3,
+      "duration": 0.27,
+      "midi": 50
+    },
+    {
+      "onset": 66.6,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 66.9,
+      "duration": 0.27,
+      "midi": 46
+    },
+    {
+      "onset": 67.2,
+      "duration": 0.54,
+      "midi": 45
+    },
+    {
+      "onset": 67.8,
+      "duration": 0.54,
+      "midi": 52
+    },
+    {
+      "onset": 68.4,
+      "duration": 0.27,
+      "midi": 57
+    },
+    {
+      "onset": 68.7,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 69.0,
+      "duration": 0.27,
+      "midi": 45
+    },
+    {
+      "onset": 69.3,
+      "duration": 0.27,
+      "midi": 48
+    },
+    {
+      "onset": 69.6,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 70.2,
+      "duration": 0.54,
+      "midi": 54
+    },
+    {
+      "onset": 70.8,
+      "duration": 0.27,
+      "midi": 59
+    },
+    {
+      "onset": 71.1,
+      "duration": 0.27,
+      "midi": 54
+    },
+    {
+      "onset": 71.4,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 71.7,
+      "duration": 0.27,
+      "midi": 50
+    },
+    {
+      "onset": 72.0,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 72.6,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 73.2,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 73.5,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 73.8,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 74.1,
+      "duration": 0.27,
+      "midi": 43
+    },
+    {
+      "onset": 74.4,
+      "duration": 0.54,
+      "midi": 40
+    },
+    {
+      "onset": 75.0,
+      "duration": 0.54,
+      "midi": 47
+    },
+    {
+      "onset": 75.6,
+      "duration": 0.27,
+      "midi": 52
+    },
+    {
+      "onset": 75.9,
+      "duration": 0.27,
+      "midi": 47
+    },
+    {
+      "onset": 76.2,
+      "duration": 0.27,
+      "midi": 40
+    },
+    {
+      "onset": 76.5,
+      "duration": 0.27,
+      "midi": 43
+    }
+  ],
+  "backing": "real recorded audio (bass removed)"
+}
